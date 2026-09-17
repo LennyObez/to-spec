@@ -67,6 +67,24 @@ function allowTool () {
   return { stdout: null, stderr: null, exitCode: 0 }
 }
 
+// Handing the decision to the person. Used when a guard has refused the same write enough times
+// that repeating itself is a tax rather than a help: the person is asked, and their answer, not
+// the guard's, governs. It is not a refusal, so it carries no failing exit code.
+function askTool ({ reasonForModel, lineForPerson = null }) {
+  return {
+    stdout: {
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'ask',
+        permissionDecisionReason: reasonForModel
+      },
+      ...(lineForPerson ? { systemMessage: lineForPerson } : {})
+    },
+    stderr: null,
+    exitCode: 0
+  }
+}
+
 // Refusing to let the turn end. The reason becomes the model's next instruction.
 function refuseStop ({ reasonForModel, lineForPerson = null }) {
   return {
@@ -105,6 +123,18 @@ function letStopThrough ({ lineForPerson = null } = {}) {
   }
 }
 
+// Context added to a prompt as it is submitted. It never blocks: an exit-2 here erases the
+// prompt, so this only ever adds, and only when it has something to add.
+function promptSubmit ({ contextForModel = null }) {
+  return {
+    stdout: contextForModel
+      ? { hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: contextForModel } }
+      : null,
+    stderr: null,
+    exitCode: 0
+  }
+}
+
 function silent () {
   return { stdout: null, stderr: null, exitCode: 0 }
 }
@@ -112,7 +142,9 @@ function silent () {
 module.exports = {
   sessionStart,
   refuseTool,
+  askTool,
   allowTool,
+  promptSubmit,
   refuseStop,
   nudgeStop,
   letStopThrough,

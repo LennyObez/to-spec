@@ -43,6 +43,9 @@ const emptyState = () => ({
   gate: { prompt_id: null, blocks: 0, identicalRuns: 0, lastList: [], spentForPrompt: null },
   outstanding: { agent: [], user: [], unverifiable: [] },
   flags: { configChanged: null, error: null },
+  // How many times a write to a given path has been refused this project, so a guard that keeps
+  // refusing the same file hands the decision to the person rather than looping against them.
+  refusals: {},
   snapshots: []
 })
 

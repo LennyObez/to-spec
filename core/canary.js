@@ -16,6 +16,7 @@
 // that reports itself once and then goes quiet is worse than one that never reported at all.
 
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
 const crypto = require('crypto')
 
@@ -164,40 +165,47 @@ function replayFixtures (standard) {
   }
 
   for (const face of faces) {
-    const dir = path.join(standard.dir, meta[face] || `fixtures/${face}`)
-    if (!fs.existsSync(dir)) {
+    const source = path.join(standard.dir, meta[face] || `fixtures/${face}`)
+    if (!fs.existsSync(source)) {
       return { id: standard.id, ok: false, why: `its ${face} fixture is declared but missing` }
     }
-    const ctx = makeContext({ projectDir: dir })
-    const result = runStandard(standard, { mode: 'tree', projectDir: dir }, ctx)
-    const want = expectations[face] || {}
-    const wantStatus = want.status || (face === 'good' ? PASS : FAIL)
 
-    // A face that names a status but no findings has declared half an expectation. Comparing
-    // against it would pass on any findings at all, which is the verdict-only match the whole
-    // two-sided replay exists to avoid, so it is red rather than trusted.
-    if (!Array.isArray(want.findings)) {
-      return {
-        id: standard.id,
-        ok: false,
-        why: `its ${face} fixture declares a status but no findings, so its answer cannot be judged for the right reason`
-      }
+    // A fixture may need project state a tracked directory cannot carry -- a git repository, a
+    // crowded root. If it declares a setup, the face is copied to a scratch directory and
+    // prepared there before the check reads it, so the tracked fixture stays content only.
+    const setup = path.join(source, 'setup.js')
+    let dir = source
+    let scratch = null
+    if (fs.existsSync(setup)) {
+      scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'to-spec-fixture-'))
+      dir = path.join(scratch, face)
+      fs.cpSync(source, dir, { recursive: true })
+      fs.rmSync(path.join(dir, 'setup.js'), { force: true })
     }
 
-    if (result.status !== wantStatus) {
-      return {
-        id: standard.id,
-        ok: false,
-        why: `its ${face} fixture answered ${result.status} where ${wantStatus} was declared${result.why ? ` (${result.why})` : ''}`
+    let problem = null
+    try {
+      if (scratch) require(setup)(dir)
+      const ctx = makeContext({ projectDir: dir })
+      const result = runStandard(standard, { mode: 'tree', projectDir: dir }, ctx)
+      const want = expectations[face] || {}
+      const wantStatus = want.status || (face === 'good' ? PASS : FAIL)
+      // A face that names a status but no findings has declared half an expectation: comparing
+      // against it would pass on any findings at all, the verdict-only match this replay exists
+      // to avoid. Findings that do not match mean the check still fails, but for another reason.
+      if (!Array.isArray(want.findings)) {
+        problem = `its ${face} fixture declares a status but no findings, so its answer cannot be judged for the right reason`
+      } else if (result.status !== wantStatus) {
+        problem = `its ${face} fixture answered ${result.status} where ${wantStatus} was declared${result.why ? ` (${result.why})` : ''}`
+      } else if (!findingsMatch(want.findings, result.findings)) {
+        problem = `its ${face} fixture still answers ${result.status}, but not for the reason it was written for`
       }
+    } catch (err) {
+      problem = `its ${face} fixture could not be prepared or replayed: ${err.message}`
+    } finally {
+      if (scratch) fs.rmSync(scratch, { recursive: true, force: true })
     }
-    if (!findingsMatch(want.findings, result.findings)) {
-      return {
-        id: standard.id,
-        ok: false,
-        why: `its ${face} fixture still answers ${result.status}, but not for the reason it was written for`
-      }
-    }
+    if (problem) return { id: standard.id, ok: false, why: problem }
   }
   return { id: standard.id, ok: true }
 }

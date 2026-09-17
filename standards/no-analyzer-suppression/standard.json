@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "no-analyzer-suppression",
+  "family": "hygiene",
+  "title": {
+    "en": "No static check is switched off in place"
+  },
+  "summary": {
+    "en": "A suppression directive silences a static check for a line or a file; the finding it hides is left unresolved."
+  },
+  "category": "agent-fixable",
+  "severity": "block",
+  "events": ["PreToolUse", "Stop"],
+  "scope": ["file", "tree"],
+  "kind": "guard",
+  "review": false,
+  "paths": {
+    "include": ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx", "**/*.ts", "**/*.tsx", "**/*.css", "**/*.scss", "**/*.php", "**/*.py", "**/*.rb", "**/*.go", "**/*.rs", "**/*.java", "**/*.cs", "**/*.gd", "**/*.vue", "**/*.svelte"],
+    "exclude": ["**/*.d.ts", "**/eslint.config.*", "**/.eslintrc*", "**/phpstan.neon", "**/phpstan.neon.dist", "**/psalm.xml", "**/psalm.xml.dist", "**/.stylelintrc*", "**/stylelint.config.*", "**/*.md", "docs/**"]
+  },
+  "message": {
+    "en": [
+      "A check was about to be switched off in the code.",
+      "I am fixing what it flags instead, so the check keeps protecting the project."
+    ],
+    "fr": [
+      "Un contrôle allait être désactivé dans le code.",
+      "Je corrige plutôt ce qu'il signale, pour qu'il continue de protéger le projet."
+    ]
+  },
+  "reason": {
+    "en": "A suppression that switches off a static check was found: an eslint-disable, a @ts-ignore or @ts-expect-error, a @phpstan-ignore or @psalm-suppress, a noqa or type: ignore, a nosemgrep, a gdlint:ignore, or a Rust allow attribute. Remove it and fix what the check flags; silencing the tool hides the finding rather than resolving it. Analyser configuration files, where an exception is declared deliberately, are outside this standard by their paths."
+  },
+  "fixtures": {
+    "bad": "fixtures/bad",
+    "good": "fixtures/good",
+    "meta": "fixtures/meta.json"
+  },
+  "limits": {
+    "timeout_ms": 3000,
+    "max_findings": 200
+  }
+}

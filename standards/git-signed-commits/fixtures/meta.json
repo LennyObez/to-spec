@@ -1,0 +1,13 @@
+{
+  "$comment": "Each face sets up a real git repository in a scratch directory: the bad one commits unsigned, the good one commits SSH-signed with an ephemeral key and an allowed-signers file so the signature verifies. The finding names no fixed commit hash, since git assigns it, so only the message is compared.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "message": "a commit in the recent history is not signed" }
+    ]
+  },
+  "good": {
+    "status": "pass",
+    "findings": []
+  }
+}

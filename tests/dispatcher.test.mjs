@@ -97,7 +97,7 @@ test('a stop with an unreadable catalogue does not pass by abstention', () => {
   const pluginRoot = mkdtempSync(join(tmpdir(), 'to-spec-plugin-'))
   const dir = project()
   try {
-    for (const part of ['core', 'harness', 'hooks', 'compat.json', '.claude-plugin', 'messages', 'standards']) {
+    for (const part of ['core', 'lib', 'harness', 'hooks', 'compat.json', '.claude-plugin', 'messages', 'standards']) {
       cpSync(join(ROOT, part), join(pluginRoot, part), { recursive: true })
     }
     rmSync(join(pluginRoot, 'standards'), { recursive: true, force: true })
@@ -138,20 +138,222 @@ test('a copy taken before a destructive command is recorded and recoverable', ()
   }
 })
 
+test('a session writes precise deny rules for the secret files git ignores', () => {
+  const dir = project()
+  try {
+    writeFileSync(join(dir, '.gitignore'), '.to-spec/state.json\n.env\n')
+    writeFileSync(join(dir, '.env'), 'SECRET=x\n')
+    writeFileSync(join(dir, '.env.example'), 'SECRET=\n')
+    invoke('SessionStart', dir, { source: 'startup' })
+    const settings = JSON.parse(readFileSync(join(dir, '.claude', 'settings.json'), 'utf8'))
+    const deny = settings.permissions.deny
+    assert.ok(deny.includes('Read(.env)') && deny.includes('Write(.env)'), 'the ignored .env is denied')
+    assert.ok(!deny.some((rule) => rule.includes('.env.example')),
+      'the tracked template is not ignored, so it is not denied')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('the deny layer is merged, never overwriting what is already there', () => {
+  const dir = project()
+  try {
+    mkdirSync(join(dir, '.claude'), { recursive: true })
+    writeFileSync(join(dir, '.claude', 'settings.json'), JSON.stringify({ permissions: { deny: ['Bash(rm -rf:*)'] }, other: true }))
+    writeFileSync(join(dir, '.gitignore'), '.env\n')
+    writeFileSync(join(dir, '.env'), 'SECRET=x\n')
+    invoke('SessionStart', dir, { source: 'startup' })
+    const settings = JSON.parse(readFileSync(join(dir, '.claude', 'settings.json'), 'utf8'))
+    assert.ok(settings.permissions.deny.includes('Bash(rm -rf:*)'), 'an existing rule survives')
+    assert.ok(settings.permissions.deny.includes('Read(.env)'), 'the new rule is added')
+    assert.equal(settings.other, true, 'unrelated settings are untouched')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('a compaction re-injects the essentials without a fresh start', () => {
+  const dir = project()
+  try {
+    const out = invoke('SessionStart', dir, { source: 'compact' })
+    assert.equal(out.status, 0)
+    assert.match(out.json.hookSpecificOutput.additionalContext, /guards remain in force/)
+    assert.match(out.json.hookSpecificOutput.additionalContext, /marker/, 'the archetype is re-injected')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('a prompt outside a project is pointed at starting one, and never blocked', () => {
+  const dir = project({ marked: false })
+  try {
+    const out = invoke('UserPromptSubmit', dir, { prompt: 'build me a site' })
+    assert.equal(out.status, 0, 'a prompt-submit hook must never block; an exit 2 erases the prompt')
+    assert.match(out.json.hookSpecificOutput.additionalContext, /to-spec:new/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('a prompt inside a project carries the no-regression rule', () => {
+  const dir = project()
+  try {
+    const out = invoke('UserPromptSubmit', dir, { prompt: 'change the header' })
+    assert.equal(out.status, 0)
+    assert.match(out.json.hookSpecificOutput.additionalContext, /regress/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('open items reach the prompt only when there are some', () => {
+  const withOpen = project()
+  const clean = project()
+  try {
+    // Seed one outstanding agent item.
+    const statePath = join(withOpen, '.to-spec', 'state.json')
+    const s = JSON.parse(readFileSync(statePath, 'utf8'))
+    s.outstanding = { agent: ['placement-css'], user: [], unverifiable: [] }
+    writeFileSync(statePath, JSON.stringify(s))
+
+    assert.match(invoke('UserPromptSubmit', withOpen, {}).json.hookSpecificOutput.additionalContext, /Open items/)
+    assert.doesNotMatch(invoke('UserPromptSubmit', clean, {}).json.hookSpecificOutput.additionalContext, /Open items/)
+  } finally {
+    rmSync(withOpen, { recursive: true, force: true })
+    rmSync(clean, { recursive: true, force: true })
+  }
+})
+
+// A plugin whose marker archetype composes exactly the given standards, so a guard can be
+// exercised against a real standard without a shipping web archetype to host it yet.
+function pluginComposing (ids) {
+  const pluginRoot = mkdtempSync(join(tmpdir(), 'to-spec-plugin-'))
+  for (const part of ['core', 'lib', 'harness', 'hooks', 'compat.json', '.claude-plugin', 'messages', 'standards']) {
+    cpSync(join(ROOT, part), join(pluginRoot, part), { recursive: true })
+  }
+  mkdirSync(join(pluginRoot, 'archetypes', 'marker'), { recursive: true })
+  writeFileSync(join(pluginRoot, 'archetypes', 'marker', 'archetype.json'), JSON.stringify({
+    schemaVersion: 1, id: 'marker', standards: ids.map((id) => ({ id }))
+  }))
+  return pluginRoot
+}
+
+test('a write that would mix styling into the markup is refused before it lands', () => {
+  const pluginRoot = pluginComposing(['placement-css'])
+  const dir = project()
+  try {
+    const out = invoke('PreToolUse', dir, {
+      prompt_id: 'turn-1', tool_name: 'Write',
+      tool_input: { file_path: 'index.html', content: '<p style="color:red">hi</p>' }
+    }, pluginRoot)
+    assert.equal(out.status, 2, 'the write is denied')
+    assert.equal(out.json.hookSpecificOutput.permissionDecision, 'deny')
+    assert.match(out.json.hookSpecificOutput.permissionDecisionReason, /style attribute/)
+    assert.ok(out.json.systemMessage, 'the person is told, in their words')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(pluginRoot, { recursive: true, force: true })
+  }
+})
+
+test('a clean write is allowed through', () => {
+  const pluginRoot = pluginComposing(['placement-css'])
+  const dir = project()
+  try {
+    const out = invoke('PreToolUse', dir, {
+      prompt_id: 'turn-1', tool_name: 'Write',
+      tool_input: { file_path: 'index.html', content: '<p class="lead">hi</p>' }
+    }, pluginRoot)
+    assert.equal(out.status, 0, 'nothing was mixed into the markup, so the write proceeds')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(pluginRoot, { recursive: true, force: true })
+  }
+})
+
+test('an edit is judged on the file it would produce, not on the fragment', () => {
+  const pluginRoot = pluginComposing(['placement-css'])
+  const dir = project()
+  try {
+    writeFileSync(join(dir, 'index.html'), '<p class="lead">hi</p>\n')
+    const out = invoke('PreToolUse', dir, {
+      prompt_id: 'turn-1', tool_name: 'Edit',
+      tool_input: { file_path: 'index.html', old_string: 'class="lead"', new_string: 'style="color:red"' }
+    }, pluginRoot)
+    assert.equal(out.status, 2, 'the reconstructed file carries an inline style, so the edit is refused')
+    assert.match(out.json.hookSpecificOutput.permissionDecisionReason, /style attribute/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(pluginRoot, { recursive: true, force: true })
+  }
+})
+
+test('a file outside the standard\'s paths is left alone', () => {
+  const pluginRoot = pluginComposing(['placement-css'])
+  const dir = project()
+  try {
+    const out = invoke('PreToolUse', dir, {
+      prompt_id: 'turn-1', tool_name: 'Write',
+      tool_input: { file_path: 'src/App.vue', content: '<template><p style="color:red">x</p></template>' }
+    }, pluginRoot)
+    assert.equal(out.status, 0, 'a single-file component co-locates its styling by design')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(pluginRoot, { recursive: true, force: true })
+  }
+})
+
+test('a write is allowed when the archetype does not compose the guard', () => {
+  // The shipped marker archetype composes the fixtures, not placement-css, so a marker project
+  // writes freely: a rule fires only for the kind of project that composes it.
+  const dir = project()
+  try {
+    const out = invoke('PreToolUse', dir, {
+      prompt_id: 'turn-1', tool_name: 'Write',
+      tool_input: { file_path: 'index.html', content: '<p style="color:red">hi</p>' }
+    })
+    assert.equal(out.status, 0)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('the fourth refusal of the same file hands the decision to the person', () => {
+  const pluginRoot = pluginComposing(['placement-css'])
+  const dir = project()
+  try {
+    const payload = {
+      prompt_id: 'turn-1', tool_name: 'Write',
+      tool_input: { file_path: 'index.html', content: '<p style="color:red">hi</p>' }
+    }
+    for (const round of [1, 2, 3]) {
+      const out = invoke('PreToolUse', dir, payload, pluginRoot)
+      assert.equal(out.json.hookSpecificOutput.permissionDecision, 'deny', `refusal ${round} still denies`)
+    }
+    const fourth = invoke('PreToolUse', dir, payload, pluginRoot)
+    assert.equal(fourth.status, 0, 'asking is not a refusal, so it carries no failing code')
+    assert.equal(fourth.json.hookSpecificOutput.permissionDecision, 'ask',
+      'past the fourth refusal, the person decides, not the guard')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(pluginRoot, { recursive: true, force: true })
+  }
+})
+
 test('a clean pass carrying an unchecked item is not silent about it', () => {
   // A pass whose only outstanding items could not be checked here must not be byte-identical to
   // a pass with nothing outstanding: the person is told what was not looked at.
   const pluginRoot = mkdtempSync(join(tmpdir(), 'to-spec-plugin-'))
   const dir = project()
   try {
-    for (const part of ['core', 'harness', 'hooks', 'compat.json', '.claude-plugin', 'messages', 'standards']) {
+    for (const part of ['core', 'lib', 'harness', 'hooks', 'compat.json', '.claude-plugin', 'messages', 'standards']) {
       cpSync(join(ROOT, part), join(pluginRoot, part), { recursive: true })
     }
     // A standard that can only report itself unavailable, in a non-blocking category.
     const sdir = join(pluginRoot, 'standards', 'needs-a-live-site')
     mkdirSync(sdir, { recursive: true })
     writeFileSync(join(sdir, 'standard.json'), JSON.stringify({
-      schemaVersion: 1, id: 'needs-a-live-site',
+      schemaVersion: 1, id: 'needs-a-live-site', family: 'fixture',
       title: { en: 'Needs a live site' }, summary: { en: 'A check that can only run against a deployed site.' },
       category: 'unverifiable-here', severity: 'report', events: ['Stop'], scope: ['tree'], kind: 'check', review: false,
       message: { en: ['One thing needs the live site.', 'I will note it.'], fr: ['Une chose demande le site en ligne.', 'Je la note.'] },
@@ -160,6 +362,12 @@ test('a clean pass carrying an unchecked item is not silent about it', () => {
       limits: { timeout_ms: 1000, max_findings: 1 }
     }))
     writeFileSync(join(sdir, 'check.js'), "module.exports = () => ({ status: 'unavailable', why: 'needs the deployed site' })\n")
+    // An archetype that composes the three, so the gate runs them and only them: the two markers
+    // and the one that can only report itself unavailable here.
+    mkdirSync(join(pluginRoot, 'archetypes', 'marker'), { recursive: true })
+    writeFileSync(join(pluginRoot, 'archetypes', 'marker', 'archetype.json'), JSON.stringify({
+      schemaVersion: 1, id: 'marker', standards: [{ id: 'marker' }, { id: 'marker-two' }, { id: 'needs-a-live-site' }]
+    }))
     // The markers present, so the two shipped standards pass and the only outstanding item is
     // the one that could not be checked here.
     writeFileSync(join(dir, 'MARKER.md'), 'MARKER\n')

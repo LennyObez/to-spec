@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "root-finite",
+  "family": "structure",
+  "title": {
+    "en": "The project root stays small and finite"
+  },
+  "summary": {
+    "en": "A root filled with loose files is hard to read; content and configuration that could live in directories should not pile up at the top."
+  },
+  "category": "agent-fixable",
+  "severity": "report",
+  "events": ["Stop"],
+  "scope": ["tree"],
+  "kind": "check",
+  "review": false,
+  "params": {
+    "max_root_entries": 30
+  },
+  "message": {
+    "en": [
+      "The project's root was filling up with loose files.",
+      "I am sorting them into folders, so it stays easy to find your way around."
+    ],
+    "fr": [
+      "La racine du projet se remplissait de fichiers en vrac.",
+      "Je les range dans des dossiers, pour qu'on s'y retrouve facilement."
+    ]
+  },
+  "reason": {
+    "en": "The project root holds more entries than the configured limit, which makes the layout hard to read: content and configuration that could live in directories are loose at the top instead. Group related files into directories, and keep the root to the few entries a reader expects. The threshold is configurable per archetype."
+  },
+  "fixtures": {
+    "bad": "fixtures/bad",
+    "good": "fixtures/good",
+    "meta": "fixtures/meta.json"
+  },
+  "limits": {
+    "timeout_ms": 3000,
+    "max_findings": 200
+  }
+}

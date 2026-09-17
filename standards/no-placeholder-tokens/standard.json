@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "no-placeholder-tokens",
+  "family": "hygiene",
+  "title": {
+    "en": "No leftover markers in the code"
+  },
+  "summary": {
+    "en": "A TODO, FIXME or XXX left in a comment, or an unfinished-content marker like lorem ipsum, means the file was delivered unfinished."
+  },
+  "category": "agent-fixable",
+  "severity": "block",
+  "events": ["PreToolUse", "Stop"],
+  "scope": ["file", "tree"],
+  "kind": "guard",
+  "review": false,
+  "paths": {
+    "include": ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx", "**/*.ts", "**/*.tsx", "**/*.css", "**/*.scss", "**/*.php", "**/*.py", "**/*.rb", "**/*.go", "**/*.rs", "**/*.java", "**/*.cs", "**/*.sql", "**/*.sh", "**/*.html", "**/*.htm", "**/*.njk", "**/*.liquid", "**/*.vue", "**/*.svelte"],
+    "exclude": ["**/*.md", "**/CHANGELOG*", "docs/**"]
+  },
+  "message": {
+    "en": [
+      "A note-to-self was left in the code.",
+      "I am resolving it, so nothing half-finished ships."
+    ],
+    "fr": [
+      "Une note laissée dans le code allait rester.",
+      "Je la traite, pour ne rien livrer d'inachevé."
+    ]
+  },
+  "reason": {
+    "en": "A leftover marker was found in a comment: a TODO, FIXME or XXX, or an unfinished-content marker such as lorem ipsum, 'a compléter', 'inserer' or changeme. Resolve what it stands for and remove the marker; a delivered file is complete and runnable, not a note about what is left to do."
+  },
+  "fixtures": {
+    "bad": "fixtures/bad",
+    "good": "fixtures/good",
+    "meta": "fixtures/meta.json"
+  },
+  "limits": {
+    "timeout_ms": 3000,
+    "max_findings": 200
+  }
+}

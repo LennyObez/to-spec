@@ -1,0 +1,13 @@
+{
+  "$comment": "Each face declares a setup that prepares a scratch directory: the bad one fills the root past the limit, the good one keeps it tidy. Findings are compared by path and message.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "path": ".", "message": "the project root holds too many entries; group loose files into directories" }
+    ]
+  },
+  "good": {
+    "status": "pass",
+    "findings": []
+  }
+}

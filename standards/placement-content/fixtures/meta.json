@@ -1,0 +1,13 @@
+{
+  "$comment": "Findings are compared by path and message. The bad layout holds a paragraph of prose that would show on every page; the good layout keeps only structure, a nav label and a short footer line, so nothing is reported.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "path": "layouts/base.html", "message": "a <p> in a layout holds hardcoded content, which belongs in a page" }
+    ]
+  },
+  "good": {
+    "status": "pass",
+    "findings": []
+  }
+}

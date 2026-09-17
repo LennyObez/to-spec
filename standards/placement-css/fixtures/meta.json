@@ -1,0 +1,15 @@
+{
+  "$comment": "What the canary expects from each fixture. Findings are compared by path and message, in order, so a check that stops finding one of them, or starts finding it for a different reason, turns the canary red rather than passing on the verdict alone.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "path": "index.html", "message": "a <style> element keeps stylesheet rules in the markup" },
+      { "path": "index.html", "message": "a style attribute on <p> puts presentation into the markup" }
+    ]
+  },
+  "good": {
+    "$comment": "A linked stylesheet, a small <style data-critical> under the allowed size, and a style attribute inside an <svg> subtree: each exemption is legitimate, so nothing is reported.",
+    "status": "pass",
+    "findings": []
+  }
+}

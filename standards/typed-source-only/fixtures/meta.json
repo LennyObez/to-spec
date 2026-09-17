@@ -1,0 +1,13 @@
+{
+  "$comment": "Findings are compared by path and message. The bad fixture is a TypeScript project with a hand-written .js in its source and a compiled .js under the tsconfig's outDir, which is not reported. The good fixture turns on allowJs, so the same .js is left alone.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "path": "src/helper.js", "message": "a hand-written JavaScript file where the source of truth should be a typed file" }
+    ]
+  },
+  "good": {
+    "status": "pass",
+    "findings": []
+  }
+}

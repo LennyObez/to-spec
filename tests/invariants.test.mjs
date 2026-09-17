@@ -67,7 +67,7 @@ function meaningful (value, what) {
 
 // The events this plugin instruments. Naming them here is what turns a typo in a manifest
 // into a failing test rather than a handler that is simply never called.
-const INSTRUMENTED_EVENTS = ['SessionStart', 'PreToolUse', 'Stop', 'ConfigChange']
+const INSTRUMENTED_EVENTS = ['SessionStart', 'PreToolUse', 'Stop', 'ConfigChange', 'UserPromptSubmit']
 
 test('the suite itself is not empty', () => {
   // A runner given no matching file reports success. The gate can therefore become vacuous
@@ -327,7 +327,9 @@ test('documentation filenames are lowercase with hyphens', () => {
     'README.md', 'LICENSE.md', 'CHANGELOG.md', 'CONTRIBUTING.md',
     'SECURITY.md', 'CODE_OF_CONDUCT.md', 'SUPPORT.md', 'CODEOWNERS.md',
     // GitHub reads this one only under its exact fixed spelling.
-    'pull_request_template.md'
+    'pull_request_template.md',
+    // A skill is discovered only under this exact fixed spelling.
+    'SKILL.md'
   ])
   let checked = 0
   for (const file of ALL_FILES) {
@@ -412,8 +414,8 @@ test('the plugin loads nothing beyond the runtime it can assume', () => {
   // point is only as constrained as the least constrained thing it loads. A dependency here
   // would mean an install step before a single guard could run.
   const allowed = new Set([
-    'fs', 'path', 'crypto', 'child_process',
-    'node:fs', 'node:path', 'node:crypto', 'node:child_process'
+    'fs', 'os', 'path', 'crypto', 'child_process',
+    'node:fs', 'node:os', 'node:path', 'node:crypto', 'node:child_process'
   ])
   let inspected = 0
   for (const file of ALL_FILES) {
@@ -517,6 +519,24 @@ test('every standard declares itself the same way, and the loader agrees', async
     }
     assert.ok(existsSync(join(standard.dir, 'guidance.md')),
       `${standard.id} carries no guidance, so what it refuses can only be guessed at`)
+  }
+})
+
+test('every archetype is sound and composes only standards that exist', () => {
+  // An archetype that names a standard the catalogue does not hold is a gate that would surface
+  // an unavailable item on every turn of that kind of project. Caught here, before it ships,
+  // rather than at each stop.
+  const archetypes = createRequire(import.meta.url)(join(ROOT, 'core/archetypes.js'))
+  const standards = createRequire(import.meta.url)(join(ROOT, 'core/standards.js'))
+  const known = new Set(standards.listStandardIds(ROOT))
+  const ids = archetypes.listArchetypeIds(ROOT)
+  assert.ok(ids.length > 0, 'a plugin composes at least one archetype')
+  for (const id of ids) {
+    const archetype = archetypes.loadArchetype(ROOT, id)
+    assert.equal(archetype.broken, undefined, `${id} does not load: ${archetype.broken}`)
+    for (const composed of archetypes.composedStandardIds(archetype)) {
+      assert.ok(known.has(composed), `archetype ${id} composes '${composed}', which is not a standard`)
+    }
   }
 })
 

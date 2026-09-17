@@ -1,0 +1,14 @@
+{
+  "$comment": "Findings are compared by path and message, in order. The bad fixture carries a TODO in a line comment and a changeme in a block comment, and a lorem ipsum inside a string that must not be reported. The good fixture carries only clean comments, and the same string, so nothing is reported.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "path": "app.js", "message": "a TODO marker was left in a comment" },
+      { "path": "app.js", "message": "a changeme marker was left in a comment" }
+    ]
+  },
+  "good": {
+    "status": "pass",
+    "findings": []
+  }
+}

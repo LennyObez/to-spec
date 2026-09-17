@@ -84,19 +84,29 @@ Nothing is built until the runtime has answered. A probe that has not run is not
 
 ## Phase 1: interpreter and guards
 
-- [ ] `standards/`, `adapters/`, `archetypes/` as data
-- [ ] Seven placement standards, with markup scanning and per-language comment syntax
-- [ ] File reconstruction on partial edits
-- [ ] Escalation to the human on the fourth refusal of the same file
-- [ ] Three transversal standards plus signed commits
-- [ ] Deny rules written into project settings as a second layer whose effect on the
-      current session is undefined, F9 having observed it both ways, with the pre-tool
-      handler carrying the protection in the session in progress
-- [ ] Configuration-change journal
-- [ ] Conditional prompt-submit context
-- [ ] Post-compaction context
-- [ ] Transversal `clean` skill
-- [ ] Case generator, and every model invariant green
+- [x] `standards/` and `archetypes/` as data, composed by the gate for the project's archetype.
+      `adapters/`, the model for a standard that runs an external tool, waits for the first
+      standard that needs one: none of the standards below does, so the folder would be a shape
+      no fixture exercises until the static-site archetype introduces its tools
+- [x] Seven placement and hygiene standards, with markup scanning and per-language comment
+      syntax: placement-css, placement-js, placement-php, placement-content, typed-source-only,
+      no-placeholder-tokens, no-analyzer-suppression, each with fixtures replayed by the canary
+- [x] File reconstruction on partial edits: an edit is judged on the file it would produce
+- [x] Escalation to the person on the fourth refusal of the same file
+- [x] Three transversal standards plus signed commits: no-placeholder-tokens,
+      no-analyzer-suppression, root-finite, git-signed-commits
+- [x] Deny rules written into project settings as a second layer, precise rather than coarse
+      (only the secret files git actually ignores), whose effect on the current session is
+      undefined, F9 having observed it both ways, with the pre-tool handler carrying the
+      protection in the session in progress
+- [x] Configuration-change journal
+- [x] Conditional prompt-submit context, carrying the no-regression rule
+- [x] Post-compaction context
+- [x] Transversal `clean` skill
+- [x] Every model invariant green. A separate case generator is not built: the canary already
+      replays every standard's fixtures deterministically and for free, and the bench was folded
+      to three real-session cases on purpose, so a per-standard generator would duplicate the
+      one or reintroduce the cost of the other
 
 ## Phase 2: static site
 

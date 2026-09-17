@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "marker",
+  "family": "fixture",
   "title": {
     "en": "The project carries its marker file"
   },

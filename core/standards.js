@@ -13,6 +13,8 @@
 
 const fs = require('fs')
 const path = require('path')
+const { execFileSync } = require('child_process')
+const htmlScan = require('../lib/html-scan')
 
 const PASS = 'pass'
 const FAIL = 'fail'
@@ -20,11 +22,11 @@ const UNAVAILABLE = 'unavailable'
 
 const CATEGORIES = ['agent-fixable', 'user-required', 'unverifiable-here']
 const SEVERITIES = ['off', 'report', 'require', 'block']
-// Only the events a standard can actually be dispatched for. In this milestone that is Stop
-// alone: selectFor is called for Stop and nowhere else. An event added here without a dispatch
-// path would let a standard declare a moment it will never run at; an invariant ties this list
-// to the events index.js actually selects for.
-const EVENTS = ['Stop']
+// Only the events a standard can actually be dispatched for: PreToolUse, where a guard looks at
+// one file before it is written, and Stop, where the gate looks at the whole tree. An event
+// added here without a dispatch path would let a standard declare a moment it will never run at;
+// an invariant ties this list to the events index.js actually selects for.
+const EVENTS = ['PreToolUse', 'Stop']
 const SCOPES = ['file', 'tree']
 const KINDS = ['check', 'guard']
 
@@ -91,6 +93,11 @@ function describeProblems (definition, id) {
   need(definition.schemaVersion === 1, 'schemaVersion must be 1')
   need(definition.id === id, `id is "${definition.id}" but the directory is "${id}"`)
   need(/^[a-z0-9]+(-[a-z0-9]+)*$/.test(String(definition.id)), 'id must be lowercase with hyphens')
+  // The family groups rules that share a concern, so a whole family can be composed or tuned at
+  // once without merging them into one rule that could carry only one severity. It is the unit
+  // of organisation; the standard stays the unit of enforcement.
+  need(typeof definition.family === 'string' && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(definition.family),
+    'family must be a lowercase-with-hyphens name')
   need(CATEGORIES.includes(definition.category), `category must be one of ${CATEGORIES.join(', ')}`)
   need(SEVERITIES.includes(definition.severity), `severity must be one of ${SEVERITIES.join(', ')}`)
   need(Array.isArray(definition.events) && definition.events.length > 0, 'events must be a non-empty list')
@@ -112,6 +119,10 @@ function describeProblems (definition, id) {
   need(definition.events && definition.events.includes('Stop')
     ? (definition.scope || []).includes('tree') : true,
   'a standard that runs at the end of a turn must be able to look at the whole tree')
+
+  need(definition.events && definition.events.includes('PreToolUse')
+    ? (definition.scope || []).includes('file') : true,
+  'a standard that runs before a write must be able to look at that one file')
 
   // Declared limits must be present and usable, or a bound the runtime is meant to apply is a
   // key nobody reads. `max_findings` caps how much a noisy check can make the run write;
@@ -149,12 +160,44 @@ function describeProblems (definition, id) {
     need(fixtures && typeof fixtures[part] === 'string', `fixtures.${part} must name a path`)
   }
 
+  // Optional data a standard may carry, each held to a shape so a declared key is one the
+  // runtime reads. `paths` narrows what files the standard looks at; `allowlist` and `params`
+  // are its own knobs, merged from the archetype then the project; `adapters` names the tools a
+  // check needs, absent when it needs none.
+  if (definition.paths !== undefined) {
+    const p = definition.paths
+    const ok = p && typeof p === 'object' && !Array.isArray(p)
+    need(ok, 'paths must be an object with include and/or exclude')
+    if (ok) {
+      for (const key of Object.keys(p)) need(['include', 'exclude'].includes(key), `unknown paths key "${key}"`)
+      for (const which of ['include', 'exclude']) {
+        if (p[which] !== undefined) {
+          need(Array.isArray(p[which]) && p[which].every((g) => typeof g === 'string' && g.length > 0),
+            `paths.${which} must be a list of glob strings`)
+        }
+      }
+    }
+  }
+  if (definition.allowlist !== undefined) {
+    need(definition.allowlist && typeof definition.allowlist === 'object' && !Array.isArray(definition.allowlist),
+      'allowlist must be an object')
+  }
+  if (definition.params !== undefined) {
+    need(definition.params && typeof definition.params === 'object' && !Array.isArray(definition.params),
+      'params must be an object')
+  }
+  if (definition.adapters !== undefined) {
+    need(Array.isArray(definition.adapters) && definition.adapters.every((a) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(a)),
+      'adapters must be a list of lowercase-with-hyphens ids')
+  }
+
   // Nothing beyond the known schema. A key nobody validates is a key nobody reads, and this
   // file's whole design is that a standard is data with a fixed shape, not a place to stash
   // configuration the runtime silently ignores.
   const KNOWN = new Set([
-    'schemaVersion', 'id', 'title', 'summary', 'category', 'severity',
-    'events', 'scope', 'kind', 'review', 'message', 'reason', 'fixtures', 'limits'
+    'schemaVersion', 'id', 'family', 'title', 'summary', 'category', 'severity',
+    'events', 'scope', 'kind', 'review', 'message', 'reason', 'fixtures', 'limits',
+    'paths', 'allowlist', 'params', 'adapters'
   ])
   for (const key of Object.keys(definition)) {
     // A $-prefixed key is a comment by convention, the same as in the catalogues, and is not
@@ -199,6 +242,24 @@ function makeContext ({ projectDir, deadline = null, log = () => {} }) {
     exists (relative) {
       return fs.existsSync(path.join(projectDir, relative))
     },
+    // A standard is handed the scanner rather than reaching for it, so the same call runs
+    // identically against a real project, a fixture and the canary.
+    html: {
+      scan (content) { return htmlScan.scan(content) }
+    },
+    // Read-only git, in the project this check is about. Arguments travel in a vector, never a
+    // shell string. A command that fails returns its exit status rather than throwing, so a check
+    // reads "not a repository" or "no such object" as an answer instead of a crash.
+    git: {
+      run (args) {
+        try {
+          const stdout = execFileSync('git', args, { cwd: projectDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+          return { status: 0, stdout }
+        } catch (err) {
+          return { status: typeof err.status === 'number' ? err.status : -1, stdout: err.stdout ? String(err.stdout) : '' }
+        }
+      }
+    },
     list (relative = '.') {
       // A walk that cannot complete is not an empty project. Swallowing the error and returning
       // a short list would read as "the check looked and found nothing", which is the false
@@ -237,7 +298,9 @@ function runStandard (standard, input, ctx) {
 
   let result
   try {
-    result = check(input, ctx)
+    // The definition travels with the input, so a check reads its own paths, allowlist and
+    // params from one place, whether the caller is the gate, the canary or a guard.
+    result = check({ ...input, standard: standard.definition }, ctx)
   } catch (err) {
     return { id: standard.id, status: UNAVAILABLE, findings: [], why: `the check for ${standard.id} threw: ${err.message}` }
   }

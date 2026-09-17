@@ -16,7 +16,7 @@
 //   node bench/cases/run.mjs --keep     leave the projects in place
 
 import { spawnSync, execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, realpathSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -28,8 +28,16 @@ const PLUGIN_ROOT = join(HERE, '..', '..')
 const KEEP = process.argv.includes('--keep')
 const SELECTED = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 
+// The one spelling of the project path. os.tmpdir() can return the 8.3 short form on Windows
+// (RUNNER~1), which the harness then reports and the model writes to, while existsSync on the
+// long form finds nothing: the same directory under two names reads as two. The real path folds
+// both to one, so the bench, the harness and the model all mean the same place.
+function canonical (dir) {
+  try { return realpathSync.native(dir) } catch (_) { return dir }
+}
+
 function markedProject () {
-  const dir = mkdtempSync(join(tmpdir(), 'to-spec-case-'))
+  const dir = canonical(mkdtempSync(join(tmpdir(), 'to-spec-case-')))
   execFileSync('git', ['init', '-q'], { cwd: dir })
   execFileSync('git', ['config', 'commit.gpgsign', 'false'], { cwd: dir })
   writeFileSync(join(dir, '.gitignore'), '.to-spec/state.json\n.to-spec/reports/\n.to-spec/cache/\n.env\n.env.*\n!.env.example\n')
@@ -125,13 +133,15 @@ const refusedStops = (s) => s.stream.filter((e) =>
 
 // What a failing case cannot say from its verdict alone: which tools the model called and how
 // each hook answered. It tells a refused write from one that never happened.
-function diagnose (s) {
+function diagnose (s, dir) {
   const tools = s.stream.flatMap((e) =>
     (e.type === 'assistant' && e.message && Array.isArray(e.message.content) ? e.message.content : [])
       .filter((p) => p && p.type === 'tool_use')
       .map((p) => `${p.name}(${(p.input && (p.input.file_path || p.input.path || p.input.command)) || ''})`))
   const hooks = s.stream.filter((e) => e.subtype === 'hook_response').map((e) => `${e.hook_name}=${e.exit_code}`)
-  return `tools=[${tools.join(', ')}] hooks=[${hooks.join(', ')}] final=${(s.finalText || '').replace(/\s+/g, ' ').slice(0, 160)}`
+  let listing = '(unreadable)'
+  try { listing = readdirSync(dir).join(', ') } catch (_) {}
+  return `tools=[${tools.join(', ')}] hooks=[${hooks.join(', ')}] dir=[${listing}] final=${(s.finalText || '').replace(/\s+/g, ' ').slice(0, 160)}`
 }
 
 const CASES = [
@@ -156,7 +166,7 @@ const CASES = [
         status: ok ? PASS : FAIL,
         dir,
         detail: `what was asked for was created: ${asked}; the gate refused ${refusals} time(s); what the gate asked for appeared: ${first && second}` +
-          (ok ? '' : `\n             ${diagnose(s)}`)
+          (ok ? '' : `\n             ${diagnose(s, dir)}`)
       }
     }
   },
@@ -180,7 +190,7 @@ const CASES = [
         status: ok ? PASS : FAIL,
         dir,
         detail: `the stop handler ran ${stopsRan} time(s) and refused ${refusals} time(s)` +
-          (ok ? '' : `\n             ${diagnose(s)}`)
+          (ok ? '' : `\n             ${diagnose(s, dir)}`)
       }
     }
   },
@@ -212,7 +222,7 @@ const CASES = [
         status: ok ? PASS : FAIL,
         dir,
         detail: `the guard refused the read of the private file: ${refused}; the secret surfaced in the session: ${leaked}` +
-          (ok ? '' : `\n             ${diagnose(s)}`)
+          (ok ? '' : `\n             ${diagnose(s, dir)}`)
       }
     }
   }
@@ -231,7 +241,7 @@ const harnessAbsent = harness.error || harness.status !== 0
 // hangs to the deadline, and without this the bench pays that hang once per case, not once. It
 // reuses the one reader the cases rest on, so "could not run here" means the same for both.
 function preflight () {
-  const dir = mkdtempSync(join(tmpdir(), 'to-spec-preflight-'))
+  const dir = canonical(mkdtempSync(join(tmpdir(), 'to-spec-preflight-')))
   try {
     const s = session(dir, 'Reply with the single word OK.', { maxTurns: 1, timeoutMs: 45000 })
     return unusableSession(s)

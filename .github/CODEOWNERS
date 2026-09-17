@@ -1,0 +1,17 @@
+# Every path has an owner. The paths listed on their own are the ones where a change alters what the plugin
+# guarantees rather than what it happens to do: the finish gate, the guards that withhold and copy, the canary
+# that proves them, the harness that wires them, the evidence register, and the workflows that gate every push.
+
+*                               @LennyObez
+
+/core/gate.js                   @LennyObez
+/core/secrets.js                @LennyObez
+/core/snapshot.js               @LennyObez
+/core/canary.js                 @LennyObez
+/core/state.js                  @LennyObez
+/harness/                       @LennyObez
+/hooks/                         @LennyObez
+/standards/                     @LennyObez
+/docs/evidence.md               @LennyObez
+/docs/roadmap.md                @LennyObez
+/.github/workflows/             @LennyObez

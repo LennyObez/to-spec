@@ -1,0 +1,65 @@
+name: Probe
+description: A runtime question that has to be answered by measurement before something can be decided.
+labels: ['type:probe', 'needs-research']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A probe is not a task. It is a question whose answer changes a decision, together with the method that
+        would answer it. What proves a runtime contract is a test against the runtime, never a document. Its
+        verdict is recorded in [docs/evidence.md](../blob/main/docs/evidence.md), and `unavailable` or
+        `not started` is never read as a pass.
+
+  - type: input
+    id: identifier
+    attributes:
+      label: Identifier
+      description: The next free identifier in the evidence register, for example F11 or C1.
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: The question
+      description: Phrase it so that an answer can be wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: method
+    attributes:
+      label: The method
+      description: Precisely enough that someone else could run it and get the same answer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: decides
+    attributes:
+      label: What it decides
+      description: The decision, guarantee or milestone item that changes with the answer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: fallback
+    attributes:
+      label: What happens if the answer is no
+      description: >-
+        The path taken if the probe fails. A probe with no stated fallback is a plan that assumes its own
+        conclusion.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: blocked
+    attributes:
+      label: Can it be run today
+      options:
+        - Yes, with what the project already has
+        - No, it needs a second harness or platform nobody has set up yet
+        - No, it needs an account, a credential or a paid service
+        - No, it needs a primary source to be read first
+    validations:
+      required: true

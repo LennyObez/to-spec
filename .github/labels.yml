@@ -1,0 +1,66 @@
+# Labels are declared here and applied by .github/workflows/labels.yml, on every change to this file and once
+# a week. A label edited in the interface has its colour and description restored; a label created by hand is
+# left alone, because deleting one would strip it from every issue that carries it.
+
+# Type: what kind of work this is.
+- name: 'type:epic'
+  color: '5A32A3'
+  description: A milestone-sized body of work with child issues
+- name: 'type:feature'
+  color: '0E8A16'
+  description: A capability the plugin should have
+- name: 'type:bug'
+  color: 'D73A4A'
+  description: Behaviour differs from what is guaranteed
+- name: 'type:chore'
+  color: 'C5DEF5'
+  description: Maintenance with no user-visible change
+- name: 'type:security'
+  color: 'B60205'
+  description: A guard, a credential, or the handling of private files
+- name: 'type:probe'
+  color: 'FBCA04'
+  description: A runtime question to answer by measurement before something can be decided
+- name: 'type:docs'
+  color: '006B75'
+  description: Documentation
+
+# Area: which part of the plugin. Mirrors the repository layout.
+- name: 'area:gate'
+  color: 'BFD4F2'
+  description: The finish gate and the turn ledger
+- name: 'area:guards'
+  color: 'BFD4F2'
+  description: The secrets guard and the snapshot before a destructive command
+- name: 'area:canary'
+  color: 'BFD4F2'
+  description: The two-sided replay that proves the guards still work
+- name: 'area:standards'
+  color: 'BFD4F2'
+  description: A standard, its fixtures, and the runner that loads them
+- name: 'area:harness'
+  color: 'BFD4F2'
+  description: The dispatcher and the per-event handlers
+- name: 'area:i18n'
+  color: 'BFD4F2'
+  description: The message catalogues and the checks over them
+- name: 'area:archetype'
+  color: 'BFD4F2'
+  description: An archetype and its composition of standards
+- name: 'area:bench'
+  color: 'BFD4F2'
+  description: The probe bench and the in-session cases
+
+# Cross-cutting.
+- name: 'needs-research'
+  color: 'D4C5F9'
+  description: Blocked on a probe whose answer is not yet in the evidence register
+- name: 'good-first-issue'
+  color: '7057FF'
+  description: A self-contained piece with a clear, small scope
+- name: 'dependencies'
+  color: '0366D6'
+  description: A dependency or a pinned action update
+- name: 'github-actions'
+  color: '000000'
+  description: The continuous-integration workflows

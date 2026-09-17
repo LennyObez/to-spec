@@ -1,0 +1,24 @@
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+      include: scope
+    labels:
+      - dependencies
+      - github-actions
+    groups:
+      actions:
+        patterns:
+          - '*'
+
+# Only the actions ecosystem, because it is the only manifest this repository carries: the plugin runs on the
+# Node standard library alone and ships no package manifest to update. The npm ecosystem is declared with the
+# first archetype that writes one. Declaring an ecosystem whose manifest does not exist makes the update bot
+# log an error on every run, which trains everyone to ignore its reports.

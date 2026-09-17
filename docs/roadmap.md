@@ -153,6 +153,10 @@ returns "not verifiable here" states what it does not prove before it ships.
 
 - [ ] Published flag and its checkpoints
 - [ ] Guided remote setup
+- [ ] State-of-the-art repository hygiene for the generated project's own remote, fitted to that
+      project rather than copied from this one: which tabs, templates, labels, protections and
+      health files it needs are decided by what the project is, so a plugin gets no wiki and a
+      library documented for a community might
 - [ ] Reviews scheduled at publication
 - [ ] Computed facts feeding the legal templates
 - [ ] Refusal of abrogated clauses

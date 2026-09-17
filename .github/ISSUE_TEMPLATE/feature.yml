@@ -1,0 +1,43 @@
+name: Feature
+description: A capability the plugin should have.
+labels: ['type:feature']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: Describe what a person cannot do today, not the solution you have in mind.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Who this is for
+      options:
+        - Someone who describes what they want and lets an agent build it
+        - An expert who reads every diff
+        - A maintainer extending the plugin
+        - Anyone
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: How we would know it works
+      description: The observable outcome, and the test or probe that would show it. A capability with no measurable outcome cannot be finished.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints this must respect
+      options:
+        - label: Blocks only what an agent can repair; what a person must resolve is announced, never blocking
+        - label: A check that cannot run reports itself unavailable, never a pass
+        - label: Every user-facing string goes through the message catalogue
+        - label: Adding it does not require editing the handler definitions
+        - label: Works the same on Linux, macOS, and Windows with and without a POSIX shell
+        - label: Names no competing product where a generic description would do

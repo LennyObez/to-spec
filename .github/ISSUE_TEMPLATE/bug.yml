@@ -1,0 +1,79 @@
+name: Bug
+description: Something behaves differently from what it guarantees.
+labels: ['type:bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems do not go here. See [SECURITY.md](../blob/main/SECURITY.md).
+
+        The failures that matter most are the ones where a guard reports safety it does not have: a secret
+        written where it would be published, a destructive command that ran without a copy taken first, a
+        check that passed by not running. If you are reporting one of those, say so.
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Linux
+        - macOS
+        - Windows with a POSIX shell
+        - Windows without a POSIX shell
+        - WSL
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: The output of `node -v`, `git --version`, and the Claude Code version.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: If a documented guarantee is broken, name it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Smallest reproduction
+      description: The shortest sequence that produces it, every time.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: report
+    attributes:
+      label: What the plugin said
+      description: >-
+        The line it showed you, and the contents of `.to-spec/reports/` if the turn wrote one. Never paste a
+        secret; the plugin names the line, not the value, on purpose.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: language
+    attributes:
+      label: Interface language
+      description: Some defects only appear in one language.
+    validations:
+      required: false

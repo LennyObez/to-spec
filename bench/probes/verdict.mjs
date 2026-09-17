@@ -26,13 +26,10 @@ export function unusableSession (s) {
       s.stderrTail ? `stderr said: ${s.stderrTail}` : null,
       s.danglingStdout ? `stdout left this outside the stream: ${s.danglingStdout}` : null
     ].filter(Boolean).join(' | ')
-    // A session that hangs on authentication never reached the model, never loaded the
-    // plugin, and so exercised nothing here: that is "could not run", not a broken bench.
-    // The discrimination reads the harness's own words; it is deliberately narrow, because
-    // a plugin defect ends its session on its own and is never one of these.
-    // Only the unambiguous vocabulary of an auth wall diverts a hang. A bare "token" or
-    // "expired" is left out on purpose: they occur in ordinary output, and diverting on them
-    // would absorb a real defect into "could not run" -- the very trade the bench refuses.
+    // A hang on authentication reached neither model nor plugin, so it exercised nothing:
+    // "could not run", not a broken bench. Narrow by design -- a plugin defect ends on its own.
+    // Only unambiguous auth vocabulary diverts a hang; a bare "token"/"expired" is left out, as
+    // it occurs in ordinary output and diverting on it would absorb a real defect.
     const authWall = /\b(log ?in|logged in|authenticat|unauthor|oauth|invalid[ _-]?(api[ _-]?key|token|credential))\b/i
     if (authWall.test(account)) {
       return { status: UNAVAILABLE, why: `the session could not authenticate, so nothing here ran. ${account}` }

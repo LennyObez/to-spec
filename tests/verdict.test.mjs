@@ -36,8 +36,7 @@ test('truncation is checked before anything else', () => {
 })
 
 test('an interruption surfaces what the harness was blocked on', () => {
-  // A hang whose cause never became a stream record is otherwise mute; the tails of both
-  // channels are the only account of it, and a bench error that hides them wastes the run.
+  // A hang whose cause never became a stream record is otherwise mute; the tails carry it out.
   const verdict = unusable(session({
     endedOnItsOwn: false, endedWhy: 'ETIMEDOUT',
     stderrTail: 'some unexpected trouble', danglingStdout: ''
@@ -47,9 +46,8 @@ test('an interruption surfaces what the harness was blocked on', () => {
 })
 
 test('a session hung on authentication could not run, and is not a bench defect', () => {
-  // A rejected credential falls back to a login that no pipe can answer. That session
-  // reached neither the model nor the plugin, so it exercised nothing here: "could not run",
-  // the same class as a missing login, not a broken bench.
+  // A rejected credential hangs on a login; that session exercised nothing, so it "could not
+  // run" -- the class of a missing login, not a broken bench.
   const verdict = unusable(session({
     endedOnItsOwn: false, endedWhy: 'ETIMEDOUT',
     stderrTail: 'Invalid API key · Please run /login', danglingStdout: ''
@@ -59,8 +57,7 @@ test('a session hung on authentication could not run, and is not a bench defect'
 })
 
 test('the auth reading is narrow enough to leave a real hang a bench error', () => {
-  // The discrimination must not swallow an interruption merely because its text is long or
-  // mentions the model; only the vocabulary of an auth wall diverts it.
+  // Only auth vocabulary diverts a hang -- not a long message that merely mentions the model.
   const verdict = unusable(session({
     endedOnItsOwn: false, endedWhy: 'ETIMEDOUT',
     stderrTail: 'the model produced a very long turn and the buffer filled', danglingStdout: ''

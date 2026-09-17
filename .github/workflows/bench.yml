@@ -37,11 +37,24 @@ jobs:
             echo "No harness credential configured; the session job will be skipped rather than pass over nothing."
           fi
 
+  # A real session on every platform the plugin claims, not on one: a green session on a single
+  # OS measures that OS. Orchestration runs under bash on all three (Git Bash on Windows); the
+  # plugin's own hooks are invoked as node, without a shell -- the property under test.
   in-situ:
-    name: the plugin, installed, in a real session
-    runs-on: ubuntu-latest
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
     needs: credential-gate
     if: needs.credential-gate.outputs.present == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: a real session on linux
+            os: ubuntu-latest
+          - label: a real session on macos
+            os: macos-latest
+          - label: a real session on windows
+            os: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -64,19 +77,13 @@ jobs:
         run: |
           # The secret carries whichever credential the person generated, and the harness reads
           # one of two variables by the credential's kind -- never a variable named CREDENTIAL.
-          # A subscription token from `claude setup-token` and a console API key share the
-          # sk-ant- prefix and are told apart by the segment that follows: `oat` marks the
-          # OAuth token the subscription reads, while an API key carries `api`. Routing the
-          # whole prefix to the API-key variable sends the subscription token where it is
-          # invalid, and the session then falls back to a login no pipe can answer. A value on
-          # no known prefix is treated as a subscription token, the form that flow returns.
+          # Which variable is a tested pure function (bench/probes/auth.mjs), not shell whose
+          # arms an edit could reorder: the credential stays in the environment and only the
+          # variable name comes back, so the secret never reaches a command line.
           if [ -z "$CREDENTIAL" ]; then
             echo "this job runs only with a credential, and none reached it"
             exit 1
           fi
-          case "$CREDENTIAL" in
-            sk-ant-oat*) export CLAUDE_CODE_OAUTH_TOKEN="$CREDENTIAL" ;;
-            sk-ant-*)    export ANTHROPIC_API_KEY="$CREDENTIAL" ;;
-            *)           export CLAUDE_CODE_OAUTH_TOKEN="$CREDENTIAL" ;;
-          esac
+          var=$(node bench/probes/auth.mjs) || { echo "could not route the credential"; exit 1; }
+          export "$var=$CREDENTIAL"
           node bench/cases/run.mjs

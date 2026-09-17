@@ -123,6 +123,17 @@ const unusable = unusableSession
 const refusedStops = (s) => s.stream.filter((e) =>
   e.subtype === 'hook_response' && e.hook_name === 'Stop' && e.exit_code === 2).length
 
+// What a failing case cannot say from its verdict alone: which tools the model called and how
+// each hook answered. It tells a refused write from one that never happened.
+function diagnose (s) {
+  const tools = s.stream.flatMap((e) =>
+    (e.type === 'assistant' && e.message && Array.isArray(e.message.content) ? e.message.content : [])
+      .filter((p) => p && p.type === 'tool_use')
+      .map((p) => `${p.name}(${(p.input && (p.input.file_path || p.input.path || p.input.command)) || ''})`))
+  const hooks = s.stream.filter((e) => e.subtype === 'hook_response').map((e) => `${e.hook_name}=${e.exit_code}`)
+  return `tools=[${tools.join(', ')}] hooks=[${hooks.join(', ')}] final=${(s.finalText || '').replace(/\s+/g, ' ').slice(0, 160)}`
+}
+
 const CASES = [
   {
     id: 'refuses',
@@ -139,11 +150,13 @@ const CASES = [
       const first = existsSync(join(dir, 'MARKER.md'))
       const second = existsSync(join(dir, 'MARKER-TWO.md'))
       const refusals = refusedStops(s)
+      const ok = asked && first && second && refusals >= 1
 
       return {
-        status: asked && first && second && refusals >= 1 ? PASS : FAIL,
+        status: ok ? PASS : FAIL,
         dir,
-        detail: `what was asked for was created: ${asked}; the gate refused ${refusals} time(s); what the gate asked for appeared: ${first && second}`
+        detail: `what was asked for was created: ${asked}; the gate refused ${refusals} time(s); what the gate asked for appeared: ${first && second}` +
+          (ok ? '' : `\n             ${diagnose(s)}`)
       }
     }
   },
@@ -162,10 +175,12 @@ const CASES = [
 
       const refusals = refusedStops(s)
       const stopsRan = s.stream.filter((e) => e.subtype === 'hook_response' && e.hook_name === 'Stop').length
+      const ok = refusals === 0 && stopsRan > 0
       return {
-        status: refusals === 0 && stopsRan > 0 ? PASS : FAIL,
+        status: ok ? PASS : FAIL,
         dir,
-        detail: `the stop handler ran ${stopsRan} time(s) and refused ${refusals} time(s)`
+        detail: `the stop handler ran ${stopsRan} time(s) and refused ${refusals} time(s)` +
+          (ok ? '' : `\n             ${diagnose(s)}`)
       }
     }
   },
@@ -191,11 +206,13 @@ const CASES = [
         String(e.hook_name || '').startsWith('PreToolUse') && e.exit_code === 2)
       // If the guard held, the secret never entered the session; its presence anywhere is a leak.
       const leaked = JSON.stringify(s.stream).includes(secret)
+      const ok = refused && !leaked
 
       return {
-        status: refused && !leaked ? PASS : FAIL,
+        status: ok ? PASS : FAIL,
         dir,
-        detail: `the guard refused the read of the private file: ${refused}; the secret surfaced in the session: ${leaked}`
+        detail: `the guard refused the read of the private file: ${refused}; the secret surfaced in the session: ${leaked}` +
+          (ok ? '' : `\n             ${diagnose(s)}`)
       }
     }
   }

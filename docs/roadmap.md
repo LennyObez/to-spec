@@ -30,10 +30,12 @@ Nothing is built until the runtime has answered. A probe that has not run is not
 - [x] The matrix has run and is green on all five platforms: Linux on the current runtime and
       on the declared floor, macOS, Windows with and without a POSIX shell, and a machine with
       no runtime at all. Every claim about those platforms is now an observation, not a file
-- [ ] **The harness's own loading has not been observed.** A job installs the plugin into a
-      real session and checks what happened to the project afterwards; with no credential it is
-      skipped rather than passing over nothing. What remains is a credential in the repository's
-      settings, so a real session runs there
+- [x] The harness's own loading is observed. A scheduled and on-demand job installs the plugin
+      into a real session and reads what happened to the project afterwards: the installed
+      plugin is found and honoured, a turn that changed nothing is left alone, and a secret in a
+      private file is not read out into the session. With no credential the job is skipped rather
+      than passing over nothing, and a session that cannot authenticate reads as could-not-run
+      rather than as a pass
 - [x] `compat.json` filled, each floor citing the feature that imposes it
 - [x] `docs/evidence.md` carries an observed result for every probe
 - [x] The probes are a bench that re-runs on demand, not a sequence of commands

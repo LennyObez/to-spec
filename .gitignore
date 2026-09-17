@@ -10,5 +10,8 @@ node_modules/
 # Local-only settings files, never published.
 *.local.json
 
+# The TAP output a CI step redirects into the tree while the suite runs.
+test-output.txt
+
 # Working notes stay out of the published repository.
 .worklog/

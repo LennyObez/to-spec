@@ -17,7 +17,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { join, dirname, extname, basename } from 'node:path'
+import { join, dirname, extname, basename, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -34,24 +34,26 @@ function walk (dir, acc = []) {
   return acc
 }
 
-// Files the repository ignores are not published, so a stray gitignored note -- a worklog, a
-// local settings file -- must not be held to the rules for tracked content. git decides what
-// is ignored; if git is absent or fails, everything is kept, so the guards can only tighten,
-// never silently weaken.
-function gitIgnored () {
+// The content guards check what is published, which is what git tracks: a stray untracked file
+// -- a worklog, a local note, a build artefact a CI step writes into the tree mid-run -- is not
+// published and must not be held to the rules for shipped content. So the file set is the
+// tracked files when git can list them, falling back to a full walk where git is absent, which
+// can only widen the set and so only tighten the guards.
+function trackedFiles () {
   try {
     const { execFileSync } = createRequire(import.meta.url)('node:child_process')
-    const out = execFileSync('git', ['-C', ROOT, 'ls-files', '--others', '--ignored', '--exclude-standard'], { encoding: 'utf8' })
-    return new Set(out.split('\n').filter(Boolean))
+    const out = execFileSync('git', ['-C', ROOT, 'ls-files'], { encoding: 'utf8' })
+    const listed = out.split('\n').filter(Boolean)
+    if (listed.length === 0) return null
+    // Back to the platform spelling so the rest of the file, which joins with the platform
+    // separator, compares like with like.
+    return listed.map((p) => p.split('/').join(sep))
   } catch (_) {
-    return new Set()
+    return null
   }
 }
 
-// git reports with forward slashes; walk() uses the platform separator. Compared on a common
-// spelling so the filter holds on every platform.
-const IGNORED = gitIgnored()
-const ALL_FILES = walk('.').filter((f) => !IGNORED.has(f.split('\\').join('/')))
+const ALL_FILES = trackedFiles() || walk('.')
 
 // Words that make a value look filled in while saying nothing. A length check alone lets
 // every one of them through.

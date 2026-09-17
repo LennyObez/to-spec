@@ -9,7 +9,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync, execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, cpSync, chmodSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, cpSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -176,20 +176,19 @@ test('a clean pass carrying an unchecked item is not silent about it', () => {
 
 test('a refusal that cannot be counted gives way rather than repeating for ever', () => {
   // The gate's cap advances only when the state note is kept. If the note cannot be written --
-  // a held lock, a read-only .to-spec -- a BLOCK re-issued from the unchanged numbers would
-  // repeat until the harness's own cap ends it. It must take the soft path instead.
-  if (typeof process.getuid === 'function' && process.getuid() === 0) return // root writes anyway
+  // the lock unacquirable, a read-only directory -- a BLOCK re-issued from the unchanged
+  // numbers would repeat until the harness's own cap ends it. It must take the soft path.
+  // The lock path is held as a directory so it can never be taken; this reproduces on every
+  // platform, where a mode bit would not.
   const dir = project() // marked, turn wrote, and the marker files are absent, so the gate blocks
+  mkdirSync(join(dir, '.to-spec', '.lock'))
   try {
-    chmodSync(join(dir, '.to-spec'), 0o500) // readable, not writable: the state note cannot be kept
     const out = invoke('Stop', dir, { prompt_id: 'turn-1', stop_hook_active: false })
-    chmodSync(join(dir, '.to-spec'), 0o700)
     assert.equal(out.status, 0, 'an uncountable refusal must not be a hard block that repeats')
     assert.ok(out.json && out.json.hookSpecificOutput,
       'it takes the soft path, which reaches the model without spending the refusal budget')
     assert.ok(!out.json.decision, 'nothing is refused when the refusal could not be counted')
   } finally {
-    try { chmodSync(join(dir, '.to-spec'), 0o700) } catch (_) {}
     rmSync(dir, { recursive: true, force: true })
   }
 })

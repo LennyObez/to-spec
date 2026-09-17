@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, isAbsolute } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
@@ -124,7 +124,7 @@ test('the temporary index is absolute, inside the git directory, and its directo
   assert.ok(withIndex.length >= 2, 'assembling and recording both need the temporary index')
   for (const call of withIndex) {
     const file = call.env.GIT_INDEX_FILE
-    assert.ok(file.startsWith('/project'), `the index path must be absolute: ${file}`)
+    assert.ok(isAbsolute(file), `the index path must be absolute: ${file}`)
     assert.match(file, /[\\/]\.git[\\/]to-spec[\\/]/, `the index must sit inside the git directory: ${file}`)
   }
   assert.ok(repo.asked.some((call) => call.args.includes('--git-path')),

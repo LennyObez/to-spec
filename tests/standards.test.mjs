@@ -114,6 +114,10 @@ test('a tree the check cannot fully walk is unavailable, never a silent pass', (
   // ctx.list() once swallowed a walk error and returned a short list, which a check reads as
   // "looked, found nothing" -- a pass. An unreadable subdirectory must surface as unavailable.
   if (typeof process.getuid === 'function' && process.getuid() === 0) return // root reads anyway
+  // A mode of 0 does not make a directory unreadable on Windows, so the condition this test
+  // needs cannot be produced there. The behaviour under test -- a walk error becoming
+  // unavailable -- is platform-independent; only the way to provoke it here is not.
+  if (process.platform === 'win32') return
   const { chmodSync } = require('node:fs')
   const { dir } = withStandard('walker', validStandard('walker'),
     'module.exports = (input, ctx) => ({ findings: ctx.list().length ? [] : [] })\n')

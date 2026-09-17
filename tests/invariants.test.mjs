@@ -325,7 +325,9 @@ test('documentation filenames are lowercase with hyphens', () => {
   // house style would be following it into invisibility.
   const conventional = new Set([
     'README.md', 'LICENSE.md', 'CHANGELOG.md', 'CONTRIBUTING.md',
-    'SECURITY.md', 'CODE_OF_CONDUCT.md', 'SUPPORT.md', 'CODEOWNERS.md'
+    'SECURITY.md', 'CODE_OF_CONDUCT.md', 'SUPPORT.md', 'CODEOWNERS.md',
+    // GitHub reads this one only under its exact fixed spelling.
+    'pull_request_template.md'
   ])
   let checked = 0
   for (const file of ALL_FILES) {

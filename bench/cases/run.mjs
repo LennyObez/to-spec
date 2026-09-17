@@ -69,13 +69,18 @@ const BENCH_EFFORT = process.env.TO_SPEC_BENCH_EFFORT || 'low'
 // through the shell there. The prompt travels on stdin, not argv, so no shell interprets it.
 const THROUGH_SHELL = process.platform === 'win32'
 
+// Under the shell, the arguments are joined into one line, so a path with a space would split
+// into two. Quote the ones that carry a space; a Windows path cannot contain a double quote,
+// so wrapping is safe. Off the shell, the arguments reach the process untouched and unquoted.
+const shellArg = (a) => (THROUGH_SHELL && /\s/.test(a) ? `"${a}"` : a)
+
 function session (dir, prompt, { allowedTools = 'Write,Read,Edit', maxTurns = 4, timeoutMs = 120000 } = {}) {
   const run = spawnSync('claude', [
     // Prompt on stdin (below), not argv. dontAsk is required: a print session starts in manual
     // mode, where every tool call is denied in silence, so the model writes nothing and no hook
     // fires; dontAsk runs allowed tools while still letting the pre-tool guard refuse one.
     '-p',
-    '--plugin-dir', PLUGIN_ROOT,
+    '--plugin-dir', shellArg(PLUGIN_ROOT),
     '--model', BENCH_MODEL,
     '--effort', BENCH_EFFORT,
     '--permission-mode', 'dontAsk',

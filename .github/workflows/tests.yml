@@ -195,3 +195,6 @@ jobs:
             exit 1
           }
           Write-Host "No runtime on PATH; the entry point cannot start: $result"
+          # The cmd call above left its non-zero code behind on purpose; the job succeeded, so
+          # end clean rather than inheriting the failure this job was built to provoke.
+          exit 0

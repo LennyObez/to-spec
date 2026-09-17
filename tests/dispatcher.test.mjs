@@ -118,6 +118,9 @@ test('a copy taken before a destructive command is recorded and recoverable', ()
   // in state.json naming the command it guarded. Both are what the repair doc points at.
   const dir = project()
   writeFileSync(join(dir, '.gitignore'), '.env\n.to-spec/state.json\n.to-spec/reports/\n.to-spec/cache/\n')
+  // An identity, because a bare runner has none and commit-tree needs one.
+  execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: dir })
+  execFileSync('git', ['config', 'user.name', 'test'], { cwd: dir })
   execFileSync('git', ['add', '-A'], { cwd: dir })
   execFileSync('git', ['-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'base'], { cwd: dir })
   try {

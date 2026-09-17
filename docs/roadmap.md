@@ -27,15 +27,13 @@ Nothing is built until the runtime has answered. A probe that has not run is not
 - [x] F10: which output channel reaches the user and which reaches the model, per event
 - [x] The continuous-integration matrix exists: four platforms, the declared runtime floor,
       and a runner with no runtime at all
-- [ ] **The matrix has never run.** Nothing has been pushed, so every claim about macOS,
-      about the floor version, and about a machine without a runtime is a claim about a file
-      rather than an observation. **Blocked on one thing only: a first push.** The jobs are
-      written, the workflow parses, and each one fails rather than skips when it cannot
-      reproduce its own case
-- [ ] **The harness's own loading has never been observed.** A job now exists that installs
-      the plugin into a real session and checks what happened to the project afterwards, and
-      it reports that it could not run rather than passing when no credential is configured.
-      What remains is the same push, plus a credential in the repository's settings
+- [x] The matrix has run and is green on all five platforms: Linux on the current runtime and
+      on the declared floor, macOS, Windows with and without a POSIX shell, and a machine with
+      no runtime at all. Every claim about those platforms is now an observation, not a file
+- [ ] **The harness's own loading has not been observed.** A job installs the plugin into a
+      real session and checks what happened to the project afterwards; with no credential it is
+      skipped rather than passing over nothing. What remains is a credential in the repository's
+      settings, so a real session runs there
 - [x] `compat.json` filled, each floor citing the feature that imposes it
 - [x] `docs/evidence.md` carries an observed result for every probe
 - [x] The probes are a bench that re-runs on demand, not a sequence of commands

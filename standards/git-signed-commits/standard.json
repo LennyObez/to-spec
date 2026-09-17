@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "git-signed-commits",
+  "family": "provenance",
+  "title": {
+    "en": "Commits carry a signature"
+  },
+  "summary": {
+    "en": "A signed commit lets anyone verify who made a change; an unsigned one in the recent history is reported so signing can be set up."
+  },
+  "category": "agent-fixable",
+  "severity": "report",
+  "events": ["Stop"],
+  "scope": ["tree"],
+  "kind": "check",
+  "review": false,
+  "params": {
+    "recent": 20
+  },
+  "message": {
+    "en": [
+      "A commit was made without a signature.",
+      "I am setting up signing, so each commit says who made it."
+    ],
+    "fr": [
+      "Un commit a été fait sans signature.",
+      "Je mets en place la signature, pour que chaque commit dise qui l'a fait."
+    ]
+  },
+  "reason": {
+    "en": "A commit in the recent history carries no signature. A signed commit lets anyone verify who made each change, which is why this project signs them. Set up commit signing (a signing key and commit.gpgsign) so new commits are signed. A commit made before signing was set up can be left as it is; new ones should carry a signature."
+  },
+  "fixtures": {
+    "bad": "fixtures/bad",
+    "good": "fixtures/good",
+    "meta": "fixtures/meta.json"
+  },
+  "limits": {
+    "timeout_ms": 5000,
+    "max_findings": 200
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$comment": "Findings are compared by path and message, in order. The bad fixture carries two comment-borne directives and one Rust allow attribute; the good fixture names a directive inside a string, which is not in force, so nothing is reported.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "path": "app.js", "message": "eslint-disable switches off a check" },
+      { "path": "app.js", "message": "@ts-ignore switches off a check" },
+      { "path": "lib.rs", "message": "an allow attribute switches off a check" }
+    ]
+  },
+  "good": {
+    "status": "pass",
+    "findings": []
+  }
+}

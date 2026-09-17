@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "typed-source-only",
+  "family": "source",
+  "title": {
+    "en": "The source of a typed project is typed"
+  },
+  "summary": {
+    "en": "A hand-written JavaScript file in a TypeScript project's source is not type-checked; its source of truth should be a typed file."
+  },
+  "category": "agent-fixable",
+  "severity": "block",
+  "events": ["PreToolUse", "Stop"],
+  "scope": ["file", "tree"],
+  "kind": "guard",
+  "review": false,
+  "paths": {
+    "include": ["src/**/*.js", "src/**/*.mjs", "src/**/*.cjs"],
+    "exclude": ["**/node_modules/**", "**/*.d.ts", "**/*.config.js", "**/*.config.mjs", "**/*.config.cjs", "**/.*rc.js"]
+  },
+  "message": {
+    "en": [
+      "A JavaScript file was about to live in a typed project.",
+      "I am keeping the source typed, so the tools can catch mistakes."
+    ],
+    "fr": [
+      "Un fichier JavaScript allait vivre dans un projet typé.",
+      "Je garde la source typée, pour que les outils repèrent les erreurs."
+    ]
+  },
+  "reason": {
+    "en": "A hand-written JavaScript file was found in a TypeScript project's source, where it is not type-checked and its source of truth should be a typed file. Write it as a typed file so the compiler checks it, or, if it is generated, keep it under the compiler's output directory. A project that turns on allowJs is left alone, and so are compiled output and configuration files."
+  },
+  "fixtures": {
+    "bad": "fixtures/bad",
+    "good": "fixtures/good",
+    "meta": "fixtures/meta.json"
+  },
+  "limits": {
+    "timeout_ms": 3000,
+    "max_findings": 200
+  }
+}

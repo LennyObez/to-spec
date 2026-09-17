@@ -21,6 +21,7 @@ function validStandard (id, over = {}) {
   return {
     schemaVersion: 1,
     id,
+    family: 'fixture',
     title: { en: `The ${id} standard` },
     summary: { en: `A fixture standard named ${id}.` },
     category: 'agent-fixable',
@@ -71,6 +72,19 @@ test('a standard that declares no limits is refused', () => {
     const loaded = standards.loadStandard(dir, 'nolimits')
     assert.ok(loaded.broken, 'a bound nobody declares is a bound nobody applies')
     assert.match(loaded.broken, /limits/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('a standard that names no family is refused', () => {
+  // The family is what lets a whole group be composed or tuned at once instead of merging its
+  // rules into one; a standard without one cannot be grouped, so it is not allowed to exist.
+  const def = validStandard('nofamily')
+  delete def.family
+  const { dir } = withStandard('nofamily', def)
+  try {
+    assert.match(standards.loadStandard(dir, 'nofamily').broken || '', /family/)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

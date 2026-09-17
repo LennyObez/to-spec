@@ -1,0 +1,14 @@
+{
+  "$comment": "Findings are compared by path and message, in order. The bad fixture carries PHP embedded in an .html file and a database query inside a view; the good fixture keeps PHP in a .php file and a view that only renders the data it is given, including allowed presentation helpers.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "path": "page.html", "message": "PHP is embedded in a file that is not a PHP file" },
+      { "path": "resources/views/home.blade.php", "message": "a database query belongs in the application, not the view" }
+    ]
+  },
+  "good": {
+    "status": "pass",
+    "findings": []
+  }
+}

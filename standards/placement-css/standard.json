@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "placement-css",
+  "family": "placement",
+  "title": {
+    "en": "Styling is placed in the stylesheet, not the markup"
+  },
+  "summary": {
+    "en": "A style attribute or a <style> element in markup mixes presentation into structure; the declarations belong in a stylesheet."
+  },
+  "category": "agent-fixable",
+  "severity": "block",
+  "events": ["PreToolUse", "Stop"],
+  "scope": ["file", "tree"],
+  "kind": "guard",
+  "review": false,
+  "paths": {
+    "include": ["**/*.html", "**/*.htm", "**/*.njk", "**/*.liquid"],
+    "exclude": ["**/*.vue", "**/*.svelte", "**/*.astro", "src/emails/**"]
+  },
+  "allowlist": {
+    "critical_style_max_bytes": 2048
+  },
+  "message": {
+    "en": [
+      "Some styling was about to be mixed into a page.",
+      "I am moving it to the stylesheet, which is easier to change later."
+    ],
+    "fr": [
+      "Du style allait être mélangé à une page.",
+      "Je le mets dans le fichier de style, c'est plus facile à modifier ensuite."
+    ]
+  },
+  "reason": {
+    "en": "Styling was found mixed into markup: a style attribute, or a <style> element in a page. Move the declarations into a stylesheet and reference it, so structure and presentation stay separate and the page stays easy to change. A style attribute within an <svg> subtree and a small <style data-critical> block are left alone."
+  },
+  "fixtures": {
+    "bad": "fixtures/bad",
+    "good": "fixtures/good",
+    "meta": "fixtures/meta.json"
+  },
+  "limits": {
+    "timeout_ms": 3000,
+    "max_findings": 200
+  }
+}

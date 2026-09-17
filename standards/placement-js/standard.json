@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "placement-js",
+  "family": "placement",
+  "title": {
+    "en": "Behaviour is placed in a script, not the markup"
+  },
+  "summary": {
+    "en": "An inline script, an on* handler or a javascript: URI mixes behaviour into structure; it belongs in a script the page references."
+  },
+  "category": "agent-fixable",
+  "severity": "block",
+  "events": ["PreToolUse", "Stop"],
+  "scope": ["file", "tree"],
+  "kind": "guard",
+  "review": false,
+  "paths": {
+    "include": ["**/*.html", "**/*.htm", "**/*.njk", "**/*.liquid"],
+    "exclude": ["**/*.vue", "**/*.svelte", "**/*.astro", "src/emails/**"]
+  },
+  "allowlist": {
+    "script_types": ["application/ld+json", "importmap", "speculationrules", "application/json"]
+  },
+  "message": {
+    "en": [
+      "Some behaviour was about to be mixed into a page.",
+      "I am moving it to its own script, which is safer and clearer."
+    ],
+    "fr": [
+      "Du code allait être mêlé à une page.",
+      "Je le mets dans un fichier à part, c'est plus sûr et plus clair."
+    ]
+  },
+  "reason": {
+    "en": "Behaviour was found mixed into markup: a <script> without src, an on* event-handler attribute, or a javascript: URI. Move it into a script the page references, and bind events there rather than in the markup. A <script> with src, and one whose type is a data or config type (application/ld+json, importmap, speculationrules, application/json), are left alone."
+  },
+  "fixtures": {
+    "bad": "fixtures/bad",
+    "good": "fixtures/good",
+    "meta": "fixtures/meta.json"
+  },
+  "limits": {
+    "timeout_ms": 3000,
+    "max_findings": 200
+  }
+}

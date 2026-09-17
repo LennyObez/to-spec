@@ -2,6 +2,7 @@
   "$comment": "The second standard exists to prove a property of the first: that adding one is a directory and nothing else. If this file's arrival required a line of code anywhere, the design this plugin rests on would not hold, and every archetype after it would be a code change.",
   "schemaVersion": 1,
   "id": "marker-two",
+  "family": "fixture",
   "title": {
     "en": "The project carries its second marker file"
   },

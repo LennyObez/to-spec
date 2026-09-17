@@ -19,6 +19,7 @@ const state = require('../../core/state')
 const ledger = require('../../core/ledger')
 const gate = require('../../core/gate')
 const standards = require('../../core/standards')
+const archetypes = require('../../core/archetypes')
 const canary = require('../../core/canary')
 const secrets = require('../../core/secrets')
 const snapshot = require('../../core/snapshot')
@@ -28,6 +29,10 @@ const i18n = require('../../core/i18n')
 const out = require('./output')
 
 const REPORT_RELATIVE = path.join('.to-spec', 'reports', 'gate.json')
+
+// How many refusals of the same file the guard makes before it hands the decision to the
+// person instead of repeating itself. The fourth refusal asks rather than denies.
+const ESCALATE_AFTER = 4
 
 function projectDirFrom (payload) {
   return (payload && payload.cwd) || process.env.CLAUDE_PROJECT_DIR || process.cwd()
@@ -41,11 +46,78 @@ function catalogueFor (projectDir, project) {
   })
 }
 
+// The standards a project's archetype composes, and the problems that stop a composition from
+// being trusted. One reading, shared by the gate at the end of a turn and the guard before a
+// write, so the two never disagree about what a project is held to.
+function composeStandards (pluginRoot, project, loaded) {
+  const archetypeId = (project && project.archetype && project.archetype.id) || null
+  const archetype = archetypeId
+    ? archetypes.loadArchetype(pluginRoot, archetypeId)
+    : { broken: 'the project names no archetype to compose' }
+  if (archetype.broken) {
+    return { standards: [], problems: [{ id: 'to-spec.archetype', why: `the archetype '${archetypeId || ''}' could not be composed: ${archetype.broken}` }] }
+  }
+  const byId = new Map(loaded.map((s) => [s.id, s]))
+  const composed = []
+  const problems = []
+  for (const id of archetypes.composedStandardIds(archetype)) {
+    const found = byId.get(id)
+    if (found) composed.push(found)
+    else problems.push({ id, why: `the archetype composes '${id}', which the catalogue does not hold` })
+  }
+  return { standards: composed, problems }
+}
+
+// The file a write would leave behind, so a guard sees the result rather than a fragment. A
+// path is returned project-relative with forward slashes, the one spelling the standards match.
+// An edit whose text is not in the file cannot be reconstructed here; null lets the gate catch
+// it at the end of the turn rather than blocking on a reconstruction that could be wrong.
+function resultingFile (toolName, toolInput, projectDir) {
+  const fs = require('fs')
+  const raw = toolInput && toolInput.file_path
+  if (typeof raw !== 'string' || !raw) return null
+  const abs = path.isAbsolute(raw) ? raw : path.join(projectDir, raw)
+  const rel = path.relative(projectDir, abs).split(path.sep).join('/')
+
+  if (toolName === 'Write') {
+    return { path: rel, content: String(toolInput.content == null ? '' : toolInput.content) }
+  }
+  if (toolName === 'Edit') {
+    let current
+    try {
+      current = fs.readFileSync(abs, 'utf8')
+    } catch (_) {
+      return null
+    }
+    const oldText = toolInput.old_string
+    const newText = toolInput.new_string == null ? '' : String(toolInput.new_string)
+    if (typeof oldText !== 'string') return null
+    const at = current.indexOf(oldText)
+    if (at === -1) return null
+    const content = toolInput.replace_all
+      ? current.split(oldText).join(newText)
+      : current.slice(0, at) + newText + current.slice(at + oldText.length)
+    return { path: rel, content }
+  }
+  return null
+}
+
 // Session start.
 
 function onSessionStart (payload, env) {
   const projectDir = projectDirFrom(payload)
   const project = state.readProject(projectDir)
+
+  // After a compaction the model has lost the thread but the session is the same one: re-inject
+  // only what it must not lose, and run no canary and write nothing. A compaction continues a
+  // session, it does not restart it.
+  if (payload.source === 'compact') {
+    if (!project) return out.silent()
+    const archetype = (project.archetype && project.archetype.id) || 'not yet decided'
+    return out.sessionStart({
+      contextForModel: `Still a to-spec project of type ${archetype}. Its guards remain in force: structure and presentation stay apart, no secret reaches a published file, commits stay signed, and nothing half-finished ships. See ${statusFile.FILENAME} for what is open.`
+    })
+  }
 
   // The canary runs whether or not this is a marked project: a broken plugin is worth saying
   // out loud even where it would have had nothing to do.
@@ -138,6 +210,54 @@ function onPreToolUse (payload, env) {
     })
   }
 
+  // Before a write lands, the file it would produce is held to the placement standards this
+  // project's archetype composes: styling, scripting or logic about to be mixed into the markup
+  // is stopped here, where the fix is cheap, rather than only caught at the end of the turn. An
+  // edit is reconstructed as the file would read after it, since the fragment alone has no
+  // context. Where the guards cannot be composed or the result cannot be reconstructed, the
+  // write is allowed and the gate catches it: prevention where it can, repair otherwise.
+  if (toolName === 'Write' || toolName === 'Edit') {
+    const target = resultingFile(toolName, payload.tool_input, projectDir)
+    if (target) {
+      const { standards: composed } = composeStandards(env.pluginRoot, project, standards.loadAll(env.pluginRoot))
+      // Only a blocking standard refuses a write; a report-level one is surfaced at the gate, not
+      // used to stop a tool, so it never turns a write into a refusal here.
+      const guards = standards.selectFor(composed, 'PreToolUse').filter((s) => s.definition.severity === 'block')
+      const guardCtx = standards.makeContext({ projectDir, deadline: clock })
+      let refusing = null
+      const findings = []
+      for (const guard of guards) {
+        const result = standards.runStandard(guard, { mode: 'file', projectDir, files: [target] }, guardCtx)
+        if (result.status === standards.FAIL && result.findings.length) {
+          if (!refusing) refusing = guard
+          for (const finding of result.findings) findings.push(finding)
+        }
+      }
+      if (refusing) {
+        const def = refusing.definition
+        const lang = String(catalogue.language || 'en').split('-')[0]
+        const personLines = (def.message && (def.message[lang] || def.message.en)) || []
+        const cap = (def.limits && def.limits.max_findings) || findings.length
+        const detail = findings.slice(0, cap).map((f) => `${f.path}:${f.line || '?'} ${f.message}`).join('; ')
+
+        // A guard that refuses the same file over and over becomes a tax rather than a help.
+        // The count is per file and persisted, so past the fourth refusal the decision is handed
+        // to the person. If the count cannot be written, denying is the safe direction.
+        let refusals = 0
+        state.updateState(projectDir, (s) => {
+          if (!s.refusals) s.refusals = {}
+          s.refusals[target.path] = (s.refusals[target.path] || 0) + 1
+          refusals = s.refusals[target.path]
+        })
+        const answer = refusals >= ESCALATE_AFTER ? out.askTool : out.refuseTool
+        return answer({
+          reasonForModel: `${def.reason.en} Found: ${detail}`,
+          lineForPerson: personLines.join(' ')
+        })
+      }
+    }
+  }
+
   if (toolName === 'Bash' || toolName === 'PowerShell') {
     const copy = snapshot.guard(payload, projectDir, { git })
     if (copy.outcome === snapshot.REFUSED) {
@@ -191,22 +311,57 @@ function onStop (payload, env) {
   if (!dry.armed) return out.silent()
 
   const loaded = standards.loadAll(env.pluginRoot)
-  const selected = standards.selectFor(loaded, 'Stop')
   const ctx = standards.makeContext({ projectDir, deadline: clock })
 
   const results = []
 
-  // A catalogue that could not be read is not a turn with nothing to check. Passing here would
-  // be the fold the whole plugin refuses: work declared sound because nothing looked at it.
-  // Named as unavailable, it reaches the gate as something outstanding rather than as silence.
+  // The project is held to the standards its archetype composes, not to every standard that
+  // exists: a rule for one kind of project must not fire on another. A catalogue that cannot be
+  // read, an archetype that cannot be composed, or an archetype naming a standard the catalogue
+  // does not hold is not a turn with nothing to check. Each is surfaced as unavailable so it
+  // reaches the gate as something outstanding, never as the silence the whole plugin refuses.
   const catalogueProblem = standards.catalogueError(env.pluginRoot)
-  if (catalogueProblem || loaded.length === 0) {
+  if (catalogueProblem) {
+    results.push({ id: 'to-spec.catalogue', status: standards.UNAVAILABLE, findings: [], why: catalogueProblem })
+  }
+
+  const archetypeId = (project.archetype && project.archetype.id) || null
+  const archetype = archetypeId
+    ? archetypes.loadArchetype(env.pluginRoot, archetypeId)
+    : { broken: 'the project names no archetype to compose' }
+
+  let selected = []
+  if (archetype.broken) {
     results.push({
-      id: 'to-spec.catalogue',
+      id: 'to-spec.archetype',
       status: standards.UNAVAILABLE,
       findings: [],
-      why: catalogueProblem || 'the standards directory holds nothing to run'
+      why: `the archetype '${archetypeId || ''}' could not be composed: ${archetype.broken}`
     })
+  } else {
+    const byId = new Map(loaded.map((s) => [s.id, s]))
+    const composed = []
+    for (const id of archetypes.composedStandardIds(archetype)) {
+      const found = byId.get(id)
+      if (found) composed.push(found)
+      else {
+        results.push({
+          id,
+          status: standards.UNAVAILABLE,
+          findings: [],
+          why: `the archetype composes '${id}', which the catalogue does not hold`
+        })
+      }
+    }
+    selected = standards.selectFor(composed, 'Stop')
+    if (selected.length === 0 && results.length === 0) {
+      results.push({
+        id: 'to-spec.archetype',
+        status: standards.UNAVAILABLE,
+        findings: [],
+        why: 'the archetype composes nothing that runs at the end of a turn'
+      })
+    }
   }
 
   // A check is started only if the budget still leaves room to write the report and emit the
@@ -327,6 +482,31 @@ function onConfigChange (payload) {
   return out.silent()
 }
 
+// A prompt is being submitted. This never blocks; it only adds context. Outside a project it
+// points the model at starting one; inside one it carries the rule that guards against undoing
+// work already done, and the open items when there are any, so a clean project pays one line and
+// a busy one is reminded of what is still open.
+function onUserPromptSubmit (payload) {
+  const projectDir = projectDirFrom(payload)
+  const project = state.readProject(projectDir)
+
+  if (!project) {
+    return out.promptSubmit({
+      contextForModel: 'This directory is not a to-spec project yet. If the person is describing a site or app to build, deduce the archetype from what they say, tell them the defaults you will start with, and invoke Skill to-spec:new; do not ask questions first.'
+    })
+  }
+
+  const current = state.readState(projectDir)
+  const outstanding = current.outstanding || {}
+  const open = ['agent', 'user', 'unverifiable'].map((key) => (outstanding[key] || []).length)
+
+  const context = ['Before acting on this request, check that it does not regress a quality the project has already reached.']
+  if (open.some((count) => count > 0)) {
+    context.push(`Open items: ${open[0]} to put right, ${open[1]} that need the person, ${open[2]} not verifiable here. See ${statusFile.FILENAME}.`)
+  }
+  return out.promptSubmit({ contextForModel: context.join(' ') })
+}
+
 function onOther () {
   return out.silent()
 }
@@ -340,7 +520,8 @@ const HANDLERS = {
   SessionStart: onSessionStart,
   PreToolUse: onPreToolUse,
   Stop: onStop,
-  ConfigChange: onConfigChange
+  ConfigChange: onConfigChange,
+  UserPromptSubmit: onUserPromptSubmit
 }
 
 function handle (event, payload, env) {

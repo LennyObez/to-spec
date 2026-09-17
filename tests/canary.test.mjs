@@ -10,7 +10,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { cpSync, mkdtempSync, rmSync, writeFileSync, readFileSync, unlinkSync, renameSync } from 'node:fs'
+import { cpSync, mkdtempSync, rmSync, writeFileSync, readFileSync, unlinkSync, renameSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -24,7 +24,7 @@ const canary = require(join(ROOT, 'core/canary.js'))
 function onACopy (mutate) {
   const dir = mkdtempSync(join(tmpdir(), 'to-spec-canary-'))
   try {
-    for (const part of ['core', 'standards', 'hooks', 'compat.json', '.claude-plugin', 'messages']) {
+    for (const part of ['core', 'lib', 'standards', 'hooks', 'compat.json', '.claude-plugin', 'messages']) {
       cpSync(join(ROOT, part), join(dir, part), { recursive: true })
     }
     if (mutate) mutate(dir)
@@ -92,8 +92,10 @@ test('a catalogue that holds nothing to run turns the canary red', () => {
   // An empty catalogue is not a plugin that found nothing wrong: it is a plugin that cannot
   // find anything. Read as a pass, it would let the gate wave every turn through.
   const out = onACopy((dir) => {
-    rmSync(join(dir, 'standards/marker'), { recursive: true, force: true })
-    rmSync(join(dir, 'standards/marker-two'), { recursive: true, force: true })
+    // Every standard, whatever the catalogue holds, so the test empties it rather than naming
+    // the two it happened to know: a new standard must not quietly refill it.
+    const root = join(dir, 'standards')
+    for (const entry of readdirSync(root)) rmSync(join(root, entry), { recursive: true, force: true })
   })
   assert.equal(out.state, canary.RED)
   assert.match(out.problems.join(' '), /nothing to run|by abstention/)
@@ -194,7 +196,7 @@ test('a green verdict is answered from the cache, and force bypasses it', () => 
   const dataDir = mkdtempSync(join(tmpdir(), 'to-spec-green-'))
   const dir = mkdtempSync(join(tmpdir(), 'to-spec-intact-'))
   try {
-    for (const part of ['core', 'standards', 'hooks', 'compat.json', '.claude-plugin', 'messages']) {
+    for (const part of ['core', 'lib', 'standards', 'hooks', 'compat.json', '.claude-plugin', 'messages']) {
       cpSync(join(ROOT, part), join(dir, part), { recursive: true })
     }
     const first = canary.run(dir, { dataDir })
@@ -223,7 +225,7 @@ test('only silence is cached', () => {
     // once and then goes quiet is worse than one that never reported at all.
     const dir = mkdtempSync(join(tmpdir(), 'to-spec-red-'))
     try {
-      for (const part of ['core', 'standards', 'hooks', 'compat.json', '.claude-plugin', 'messages']) {
+      for (const part of ['core', 'lib', 'standards', 'hooks', 'compat.json', '.claude-plugin', 'messages']) {
         cpSync(join(ROOT, part), join(dir, part), { recursive: true })
       }
       writeFileSync(join(dir, 'standards/marker/check.js'),

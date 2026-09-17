@@ -1,0 +1,9 @@
+{
+  "$comment": "The fixture archetype, the counterpart of the fixture standards. The bench marks its projects with it so the gate composes marker and marker-two and nothing else, which is what lets a real-session case prove the gate refuses and the model puts it right without a real standard in the way.",
+  "schemaVersion": 1,
+  "id": "marker",
+  "standards": [
+    { "id": "marker" },
+    { "id": "marker-two" }
+  ]
+}

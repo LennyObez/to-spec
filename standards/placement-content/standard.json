@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "placement-content",
+  "family": "placement",
+  "title": {
+    "en": "Content is placed in a page, not the shared layout"
+  },
+  "summary": {
+    "en": "A paragraph or list item of hardcoded content in a shared layout appears on every page and cannot differ; content belongs in a page."
+  },
+  "category": "agent-fixable",
+  "severity": "report",
+  "events": ["Stop"],
+  "scope": ["tree"],
+  "kind": "check",
+  "review": false,
+  "paths": {
+    "include": ["**/layouts/**", "**/_layouts/**", "**/_includes/**", "**/partials/**"]
+  },
+  "params": {
+    "content_tags": ["p", "li", "blockquote"],
+    "max_words": 12
+  },
+  "message": {
+    "en": [
+      "A page's words were sitting in the shared layout.",
+      "I am moving them into the page, so each page can say its own thing."
+    ],
+    "fr": [
+      "Des mots d'une page se trouvaient dans la mise en page commune.",
+      "Je les déplace dans la page, pour que chacune dise ce qui lui est propre."
+    ]
+  },
+  "reason": {
+    "en": "Hardcoded content was found in a layout template: a paragraph or list item holding a page's words rather than structure. A layout is shared across pages, so text placed there shows on every one and cannot differ. Move the content into the page or a data file, and leave the layout the structure the pages fill. Structural labels and short text are left alone."
+  },
+  "fixtures": {
+    "bad": "fixtures/bad",
+    "good": "fixtures/good",
+    "meta": "fixtures/meta.json"
+  },
+  "limits": {
+    "timeout_ms": 3000,
+    "max_findings": 200
+  }
+}

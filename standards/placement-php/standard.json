@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "placement-php",
+  "family": "placement",
+  "title": {
+    "en": "Logic is placed in the application, not the view"
+  },
+  "summary": {
+    "en": "PHP embedded in a non-PHP file, or a database query, an env() call or a raw superglobal in a view, mixes logic into what a page shows."
+  },
+  "category": "agent-fixable",
+  "severity": "block",
+  "events": ["PreToolUse", "Stop"],
+  "scope": ["file", "tree"],
+  "kind": "guard",
+  "review": false,
+  "paths": {
+    "include": ["**/*.html", "**/*.htm", "**/*.php"],
+    "exclude": ["**/vendor/**"]
+  },
+  "params": {
+    "view_paths": ["**/resources/views/**", "**/views/**", "**/templates/**"]
+  },
+  "message": {
+    "en": [
+      "Some logic was about to sit in a page's markup.",
+      "I am moving it out, so the page stays about what it shows."
+    ],
+    "fr": [
+      "De la logique allait se trouver dans le balisage d'une page.",
+      "Je la sors, pour que la page reste ce qu'elle affiche."
+    ]
+  },
+  "reason": {
+    "en": "Logic was found in the markup: PHP embedded in a non-PHP file, or a database query (DB::, a model query, new PDO), an env() call or a raw request superglobal in a view. Move it into the application, pass the view only the data it renders, and read configuration and requests there. Template helpers a view is meant to call are left alone."
+  },
+  "fixtures": {
+    "bad": "fixtures/bad",
+    "good": "fixtures/good",
+    "meta": "fixtures/meta.json"
+  },
+  "limits": {
+    "timeout_ms": 3000,
+    "max_findings": 200
+  }
+}

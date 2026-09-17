@@ -1,0 +1,15 @@
+{
+  "$comment": "Findings are compared by path and message, in order. The bad fixture carries all three shapes; the good one carries the two that are allowed, an external script and a data script, plus a real link and button, so nothing is reported.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "path": "index.html", "message": "a <script> without src runs behaviour from inside the markup" },
+      { "path": "index.html", "message": "a javascript: URI in href puts behaviour in the markup" },
+      { "path": "index.html", "message": "an onclick handler puts behaviour in the markup" }
+    ]
+  },
+  "good": {
+    "status": "pass",
+    "findings": []
+  }
+}

@@ -1,0 +1,7 @@
+{
+  // A project that has chosen to accept JavaScript is left alone.
+  "compilerOptions": {
+    "allowJs": true,
+    "strict": true
+  }
+}

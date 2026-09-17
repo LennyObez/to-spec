@@ -63,6 +63,11 @@ function session (dir, prompt, { allowedTools = 'Write,Read,Edit', maxTurns = 4 
     '--plugin-dir', PLUGIN_ROOT,
     '--model', BENCH_MODEL,
     '--effort', BENCH_EFFORT,
+    // A print session starts in manual permission mode, where a non-interactive run has no way
+    // to approve a tool and every tool call is denied in silence -- so the model writes nothing
+    // and no hook ever sees a change. This mode runs the allowed tools without a prompt while
+    // still letting the plugin's own pre-tool guard refuse one, which the credential case needs.
+    '--permission-mode', 'dontAsk',
     '--output-format', 'stream-json',
     '--verbose',
     '--include-hook-events',

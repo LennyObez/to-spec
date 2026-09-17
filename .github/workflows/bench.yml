@@ -1,0 +1,77 @@
+name: bench
+
+# Real sessions cost real money on a real account, so they do not run on every push. They run
+# on a schedule and on demand: enough to catch a regression in how the harness loads the plugin
+# without a push tax. With no credential configured the session job is skipped, never green: a
+# job that ran no session must not read as a session that passed.
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bench-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # A secret cannot be read in a job-level condition directly, so it is turned into an output
+  # here and the session job keys on that.
+  credential-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - id: check
+        shell: bash
+        env:
+          CREDENTIAL: ${{ secrets.HARNESS_CREDENTIAL }}
+        run: |
+          if [ -n "$CREDENTIAL" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No harness credential configured; the session job will be skipped rather than pass over nothing."
+          fi
+
+  in-situ:
+    name: the plugin, installed, in a real session
+    runs-on: ubuntu-latest
+    needs: credential-gate
+    if: needs.credential-gate.outputs.present == 'true'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+
+      # The runner has no harness of its own, so this installs it. The credential is present by
+      # construction in this job, so a failure to install or authenticate is a real failure,
+      # not an excuse to exit clean.
+      - name: Install the harness
+        shell: bash
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude --version
+
+      - name: Session cases
+        shell: bash
+        env:
+          CREDENTIAL: ${{ secrets.HARNESS_CREDENTIAL }}
+        run: |
+          # The secret carries whichever credential the person generated. An API key from the
+          # console is `sk-ant-...` and goes to ANTHROPIC_API_KEY; anything else is treated as a
+          # long-lived subscription token from `claude setup-token`. The harness reads one of
+          # these; it never reads a variable named CREDENTIAL.
+          if [ -z "$CREDENTIAL" ]; then
+            echo "this job runs only with a credential, and none reached it"
+            exit 1
+          fi
+          case "$CREDENTIAL" in
+            sk-ant-*) export ANTHROPIC_API_KEY="$CREDENTIAL" ;;
+            *)        export CLAUDE_CODE_OAUTH_TOKEN="$CREDENTIAL" ;;
+          esac
+          node bench/cases/run.mjs

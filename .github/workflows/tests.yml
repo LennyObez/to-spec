@@ -139,17 +139,32 @@ jobs:
         with:
           node-version: '24'
 
-      # The credential is present by construction here, so a missing harness is a real setup
-      # failure, not an excuse to exit clean. The session runs, or the job is red.
+      # The runner has no harness of its own, so this installs it. The credential is present by
+      # construction in this job, so a failure to install or authenticate is a real failure,
+      # not an excuse to exit clean.
+      - name: Install the harness
+        shell: bash
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude --version
+
       - name: Session cases
         shell: bash
         env:
           CREDENTIAL: ${{ secrets.HARNESS_CREDENTIAL }}
         run: |
-          if ! command -v claude >/dev/null 2>&1; then
-            echo "the harness is not installed on this runner, and this job promised a session"
+          # The secret carries whichever credential the person generated. An API key from the
+          # console is `sk-ant-...` and goes to ANTHROPIC_API_KEY; anything else is treated as a
+          # long-lived subscription token from `claude setup-token`. The harness reads one of
+          # these; it never reads a variable named CREDENTIAL.
+          if [ -z "$CREDENTIAL" ]; then
+            echo "this job runs only with a credential, and none reached it"
             exit 1
           fi
+          case "$CREDENTIAL" in
+            sk-ant-*) export ANTHROPIC_API_KEY="$CREDENTIAL" ;;
+            *)        export CLAUDE_CODE_OAUTH_TOKEN="$CREDENTIAL" ;;
+          esac
           node bench/cases/run.mjs
 
   no-node:

@@ -1,0 +1,20 @@
+{
+  "$comment": "What the canary expects from each fixture, named finding by finding rather than by verdict alone.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "path": "MARKER-TWO.md", "message": "MARKER-TWO.md is missing from the project root" }
+    ]
+  },
+  "good": {
+    "status": "pass",
+    "findings": []
+  },
+  "blank": {
+    "$comment": "Present but without the token: the content branch that bad and good never reach.",
+    "status": "fail",
+    "findings": [
+      { "path": "MARKER-TWO.md", "message": "MARKER-TWO.md does not carry MARKER on a line of its own" }
+    ]
+  }
+}

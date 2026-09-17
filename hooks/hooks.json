@@ -1,0 +1,55 @@
+{
+  "description": "to-spec: one generic dispatcher per lifecycle event, exec form, no shell.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.js", "SessionStart"],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "$comment": "Every tool, not a list of the ones believed to write. A list would have to be complete and will not be: a shell command redirects into a file, a subagent edits on its own, a connected tool writes through a channel nobody enumerated. Each of those turns would then end in silence, because the gate learns that a turn changed something here and nowhere else.",
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.js", "PreToolUse"],
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.js", "Stop"],
+            "timeout": 300
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.js", "ConfigChange"],
+            "timeout": 20
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$comment": "Mots machine qu'une personne ne devrait jamais avoir à lire, et verdicts que personne n'a mérités. Correspondance par mot entier, insensible à la casse et aux accents sauf mention contraire. Les concepts sont déclinés par langue, jamais traduits mot à mot : l'identifiant de concept est ce que le test rapporte.",
+
+  "jargon": [
+    "hook", "archetype", "archetypes", "placeholder", "lint", "linter", "inline",
+    "snapshot", "exit", "regex", "regexp", "stderr", "stdout", "payload",
+    "runtime", "dispatcher", "matcher", "repo", "commit", "commits"
+  ],
+
+  "caseSensitive": ["CI", "JSON", "API"],
+
+  "$verdicts": "Rien ne peut être déclaré fini, sûr ou correct à la place de la personne. Un verdict positif est la seule chose qu'un garde-fou ne peut jamais mériter, puisqu'il affirme l'absence de ce qu'on n'a pas cherché.",
+  "verdicts": [
+    "prêt", "prête", "réussi", "réussie", "succès", "parfait", "parfaite",
+    "validé", "validée", "conforme", "sécurisé", "sécurisée", "accessible",
+    "tout va bien", "tout fonctionne", "entièrement testé"
+  ]
+}

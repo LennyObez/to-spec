@@ -1,0 +1,35 @@
+{
+  "$comment": "Chaque chaîne qu'une personne lit. Le harnais préfixe les lignes affichées par le nom de l'événement, donc chacune doit se lire naturellement à sa suite et ne jamais commencer par rappeler la situation. Le français a trois catégories de pluriel là où l'anglais en a deux : les clés suivent ce que le système produit, pas une convention maison.",
+
+  "canary.broken": "Les protections de ce projet ne répondent pas sur cet ordinateur. Je peux continuer sans elles, mais écris « répare les protections » et je m'en occupe.",
+
+  "gate.blocked.one": "Je continue : il reste {count} chose avant de pouvoir te livrer.",
+  "gate.blocked.many": "Je continue : il reste {count} choses avant de pouvoir te livrer.",
+  "gate.blocked.other": "Je continue : il reste {count} choses avant de pouvoir te livrer.",
+  "gate.stuck": "Les mêmes points restent ouverts après trois tentatives, donc je m'arrête plutôt que de tourner en rond. La liste est dans {path}.",
+  "gate.spent": "J'ai déjà demandé trois fois, donc je laisse passer plutôt que d'insister. Ce qui reste est dans {path}.",
+  "gate.needs_you.one": "Une chose dépend de toi plutôt que de moi : {first}.",
+  "gate.needs_you.many": "{count} choses dépendent de toi plutôt que de moi, à commencer par {first}.",
+  "gate.needs_you.other": "{count} choses dépendent de toi plutôt que de moi, à commencer par {first}.",
+  "gate.not_looked.one": "Ce tour est propre, mais une chose n'a pas pu être vérifiée ici ; elle est listée dans {path}.",
+  "gate.not_looked.many": "Ce tour est propre, mais {count} choses n'ont pas pu être vérifiées ici ; elles sont listées dans {path}.",
+  "gate.not_looked.other": "Ce tour est propre, mais {count} choses n'ont pas pu être vérifiées ici ; elles sont listées dans {path}.",
+
+  "ledger.cannot_note": "Je n'ai pas pu noter que ce tour modifie le projet, donc rien ne vérifierait le résultat ensuite. J'ai laissé le fichier tel quel.",
+
+  "secrets.withheld_write": "J'ai retenu un mot de passe qui allait être écrit en clair là où il serait publié. Je le range dans un fichier privé.",
+  "secrets.withheld_read": "Je n'ai pas ouvert ce fichier : il contient des clés privées, et tout ce que j'y lis se retrouve dans cette conversation.",
+  "secrets.cannot_check": "Je n'ai pas pu vérifier si ce fichier contient quelque chose de privé, donc je n'y ai pas touché.",
+
+  "snapshot.failed": "Je n'ai pas pu faire de sauvegarde de sécurité d'abord, donc je ne lance pas cette commande. Rien n'a été modifié.",
+  "snapshot.no_repository": "Il n'y a pas encore d'historique ici, donc rien sur quoi revenir si cette commande tourne mal. Laisse-moi en mettre un en place d'abord.",
+  "snapshot.no_ignore_rules": "Ce projet n'a pas encore de règles d'exclusion, donc une sauvegarde ramasserait tous les fichiers générés. Laisse-moi les ajouter d'abord, puis lancer cette commande.",
+
+  "status.title_default": "Ce projet",
+  "status.all_clear": "Rien ne reste à faire de mon côté.",
+  "status.can_do": "Ce que je peux encore faire",
+  "status.need_you": "Ce dont j'ai besoin de toi",
+  "status.not_checked": "Non vérifié ici",
+  "status.nothing_skipped": "Rien n'a été laissé de côté à ce tour.",
+  "status.full_report": "Le rapport complet du dernier tour est dans `{path}`."
+}

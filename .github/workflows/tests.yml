@@ -1,0 +1,197 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # A green suite on one platform measures the platform.
+  matrix:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: linux
+            os: ubuntu-latest
+            shell: bash
+            node: '24'
+          # The only place the declared floor is exercised.
+          - label: linux on the declared floor
+            os: ubuntu-latest
+            shell: bash
+            node: '20'
+          - label: macos
+            os: macos-latest
+            shell: bash
+            node: '24'
+          - label: windows with a POSIX shell
+            os: windows-latest
+            shell: bash
+            node: '24'
+          - label: windows without a POSIX shell
+            os: windows-latest
+            shell: pwsh
+            node: '24'
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: ${{ matrix.node }}
+
+      # Running under a non-POSIX shell is not the same as running where none exists: the
+      # shell stays one PATH entry away and an accidental dependency would pass unnoticed.
+      - name: Take the POSIX shell off PATH
+        if: matrix.label == 'windows without a POSIX shell'
+        run: |
+          $kept = $env:PATH -split ';' | Where-Object {
+            $_ -and -not (Test-Path (Join-Path $_ 'bash.exe')) -and -not (Test-Path (Join-Path $_ 'sh.exe'))
+          }
+          $env:PATH = $kept -join ';'
+          "PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          foreach ($name in @('bash', 'sh')) {
+            if (Get-Command $name -ErrorAction SilentlyContinue) {
+              Write-Error "$name is still reachable; this job would not measure what it claims"
+              exit 1
+            }
+          }
+
+      - name: Probes that run without credentials
+        run: node bench/probes/run.mjs F8 F2 --require=F8
+
+      # The count is read, not just the exit code: a runner given no matching file reports
+      # success. Output goes to a file first, so the status read is the runner's own.
+      - name: Out-of-runtime tests
+        if: matrix.shell == 'bash'
+        shell: bash
+        run: |
+          # The default shell runs with `set -e`, which would abort on node's non-zero exit
+          # before the count is read and before the output is shown. Consuming its status in an
+          # `if` keeps the failure ours to report, with the output printed either way.
+          if node --test --test-reporter=tap > test-output.txt 2>&1; then status=0; else status=$?; fi
+          cat test-output.txt
+          if [ "$status" -ne 0 ]; then exit "$status"; fi
+          passed=$(grep -E '^# pass [0-9]+' test-output.txt | grep -oE '[0-9]+$' | head -1)
+          if [ -z "$passed" ] || [ "$passed" -lt 150 ]; then
+            echo "the suite reported ${passed:-no} passing tests; a gate that runs nothing is not a gate"
+            exit 1
+          fi
+
+      - name: Out-of-runtime tests
+        if: matrix.shell == 'pwsh'
+        shell: pwsh
+        run: |
+          node --test --test-reporter=tap *> test-output.txt
+          $status = $LASTEXITCODE
+          Get-Content test-output.txt
+          if ($status -ne 0) { exit $status }
+          $line = Select-String -Path test-output.txt -Pattern '^# pass (\d+)' | Select-Object -First 1
+          $passed = if ($line) { [int]$line.Matches[0].Groups[1].Value } else { 0 }
+          if ($passed -lt 150) {
+            Write-Error "the suite reported $passed passing tests; a gate that runs nothing is not a gate"
+            exit 1
+          }
+
+  # Whether a session can run at all, decided in its own job so the answer can gate the next
+  # one. A secret cannot be read in a job-level condition directly, so it is turned into an
+  # output here and the in-situ job keys on that.
+  credential-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - id: check
+        shell: bash
+        env:
+          CREDENTIAL: ${{ secrets.HARNESS_CREDENTIAL }}
+        run: |
+          if [ -n "$CREDENTIAL" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No harness credential configured; the in-situ job will be skipped rather than pass over nothing."
+          fi
+
+  # Every job above runs the entry point directly, which says nothing about installation. This
+  # one installs the plugin into a real session. With no credential it is SKIPPED, never green:
+  # a job that ran no session must not read as a session that passed.
+  in-situ:
+    name: the plugin, installed, in a real session
+    runs-on: ubuntu-latest
+    needs: credential-gate
+    if: needs.credential-gate.outputs.present == 'true'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+
+      # The credential is present by construction here, so a missing harness is a real setup
+      # failure, not an excuse to exit clean. The session runs, or the job is red.
+      - name: Session cases
+        shell: bash
+        env:
+          CREDENTIAL: ${{ secrets.HARNESS_CREDENTIAL }}
+        run: |
+          if ! command -v claude >/dev/null 2>&1; then
+            echo "the harness is not installed on this runner, and this job promised a session"
+            exit 1
+          fi
+          node bench/cases/run.mjs
+
+  no-node:
+    name: windows with no runtime at all
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      # Reproduces the machine this plugin cannot protect, and fails if it cannot reproduce
+      # it. Without an interpreter no handler starts, and a handler that cannot start is
+      # treated as one that raised no objection.
+      - name: Take the runtime off PATH and record what is left
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # The entry point the manifest declares must be there to begin with, or a green here
+          # would prove nothing more than an empty checkout: the interpreter blocked a handler
+          # that was never present.
+          $manifest = Get-Content hooks/hooks.json -Raw | ConvertFrom-Json
+          $args = $manifest.hooks.SessionStart[0].hooks[0].args
+          $entry = ($args[0] -replace '\$\{CLAUDE_PLUGIN_ROOT\}', (Get-Location).Path)
+          if (-not (Test-Path $entry)) {
+            Write-Error "the declared entry point $entry is absent; this job would prove nothing"
+            exit 1
+          }
+          $kept = $env:PATH -split ';' | Where-Object {
+            $_ -and -not (Test-Path (Join-Path $_ 'node.exe'))
+          }
+          $env:PATH = $kept -join ';'
+          if (Get-Command node -ErrorAction SilentlyContinue) {
+            Write-Error 'the runtime is still reachable; this job cannot reproduce its own case'
+            exit 1
+          }
+          $result = cmd /c "node hooks\dispatch.js SessionStart 2>&1"
+          if ($LASTEXITCODE -eq 0) {
+            Write-Error 'the entry point started without a runtime, which contradicts this job'
+            exit 1
+          }
+          if ("$result" -notmatch 'node') {
+            Write-Error "the failure did not name the interpreter, so it may be an empty checkout rather than a blocked handler: $result"
+            exit 1
+          }
+          Write-Host "No runtime on PATH; the entry point cannot start: $result"

@@ -1,0 +1,17 @@
+{
+  "$comment": "The repository is its own marketplace, so installing takes two commands and no intermediary. The source is this directory: there is one plugin here and no reason to pretend otherwise.",
+  "name": "to-spec",
+  "owner": {
+    "name": "Lenny Obez",
+    "email": "github@lennyobez.com"
+  },
+  "plugins": [
+    {
+      "name": "to-spec",
+      "source": "./",
+      "description": "Keeps a coding session on rails so it delivers a complete, clean, evolvable codebase.",
+      "category": "code-quality",
+      "keywords": ["guardrails", "standards", "scaffolding"]
+    }
+  ]
+}

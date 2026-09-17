@@ -1,0 +1,14 @@
+node_modules/
+
+# Session state, reports and cache the plugin writes into any project it runs on, this repo
+# included. The files a real project tracks under .to-spec are re-included.
+.to-spec/
+!.to-spec/project.json
+!.to-spec/baseline.json
+!.to-spec/diagnostic.json
+
+# Local-only settings files, never published.
+*.local.json
+
+# Working notes stay out of the published repository.
+.worklog/

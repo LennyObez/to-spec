@@ -1,0 +1,17 @@
+{
+  "$comment": "Machine words a person should never have to read, and verdicts nobody has earned. Matched whole-word, case-insensitively except where noted. The i18n test scans the message catalogues against this list.",
+
+  "jargon": [
+    "hook", "archetype", "placeholder", "lint", "linter", "inline", "snapshot",
+    "exit", "regex", "regexp", "lockfile", "stderr", "stdout", "payload",
+    "runtime", "dispatcher", "matcher", "repo"
+  ],
+
+  "caseSensitive": ["CI", "JSON", "API"],
+
+  "$verdicts": "Nothing may be declared finished, safe or correct on the person's behalf. A positive verdict is the one thing a guard can never earn, because it claims the absence of what was not looked for.",
+  "verdicts": [
+    "ready", "success", "successful", "perfect", "validated", "compliant",
+    "secure", "accessible", "all good", "everything works", "fully tested"
+  ]
+}

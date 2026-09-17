@@ -1,0 +1,19 @@
+{
+  "name": "to-spec",
+  "version": "0.0.1",
+  "description": "Keeps a coding session on rails so it delivers a complete, clean, evolvable codebase.",
+  "author": {
+    "name": "Lenny Obez",
+    "email": "github@lennyobez.com"
+  },
+  "homepage": "https://github.com/LennyObez/to-spec",
+  "repository": "https://github.com/LennyObez/to-spec",
+  "license": "Apache-2.0",
+  "keywords": [
+    "code-quality",
+    "guardrails",
+    "scaffolding",
+    "standards",
+    "hooks"
+  ]
+}

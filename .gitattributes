@@ -1,0 +1,14 @@
+# LF everywhere: the plugin refuses a carriage return in its own files, and this keeps a
+# Windows checkout from tripping that guard.
+* text=auto eol=lf
+
+[attr]binary -diff -merge -text
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

@@ -1,0 +1,28 @@
+{
+  "$comment": "Every floor here cites the feature that imposes it. A number without a reason is a guess, and a guess cannot be revised later on purpose.",
+  "harness": {
+    "min": "2.1.196",
+    "minReason": "the turn identifier the ledger is keyed on became a common input field at this version; taken from the harness's own release history and not from a measurement here, because no older build was available to run against",
+    "minEvidence": "reasoned",
+    "tested": "2.1.261",
+    "testedEvidence": "measured: every probe in bench/probes/run.mjs ran against this build"
+  },
+  "node": {
+    "min": "20.0.0",
+    "minReason": "the built-in test runner is stable from this version and sets a non-zero exit code on failure, so the suite needs no dependency",
+    "minEvidence": "reasoned: the floor the runtime feature imposes; the matrix will exercise it against this version once it has run, and until then no run has measured it",
+    "tested": "24.15.0"
+  },
+  "git": {
+    "min": "2.5.0",
+    "minReason": "resolving the temporary index path with rev-parse --git-path, which the snapshot uses so the index sits inside the git directory rather than in the working tree; that option arrived in this version, and the plumbing around it is older",
+    "minEvidence": "reasoned: derived from the commands the snapshot exercises, not from a run against that version",
+    "tested": "2.55.0",
+    "futureFloor": "2.34.0",
+    "futureFloorReason": "signature with an SSH key, which is what will let a signed history be verified with no network and no account; nothing in this milestone signs or verifies anything, so the floor is recorded rather than declared"
+  },
+  "stop": {
+    "softVerified": true,
+    "softVerifiedReason": "probe F1b: context supplied through hookSpecificOutput on a non-blocking stop both continues the turn and reaches the model, observed on 2.1.261"
+  }
+}

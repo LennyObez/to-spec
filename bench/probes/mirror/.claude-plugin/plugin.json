@@ -1,0 +1,7 @@
+{
+  "name": "to-spec-mirror",
+  "version": "0.0.1",
+  "description": "A measuring instrument, not a guard: it records every payload it receives and emits whatever a control file asks for.",
+  "license": "Apache-2.0",
+  "keywords": ["measurement"]
+}

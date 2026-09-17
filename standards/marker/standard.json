@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "marker",
+  "title": {
+    "en": "The project carries its marker file"
+  },
+  "summary": {
+    "en": "A fixture standard: the project root must hold MARKER.md containing the word MARKER."
+  },
+  "category": "agent-fixable",
+  "severity": "block",
+  "events": ["Stop"],
+  "scope": ["tree"],
+  "kind": "check",
+  "review": false,
+  "message": {
+    "en": [
+      "One file this project is meant to carry is missing.",
+      "I am adding it now, then I will pick up where I left off."
+    ],
+    "fr": [
+      "Un fichier que ce projet doit porter est absent.",
+      "Je l'ajoute maintenant, puis je reprends où j'en étais."
+    ]
+  },
+  "reason": {
+    "en": "MARKER.md is missing from the project root, or does not contain the word MARKER. Create it with that word on a line of its own, then continue."
+  },
+  "fixtures": {
+    "bad": "fixtures/bad",
+    "good": "fixtures/good",
+    "meta": "fixtures/meta.json"
+  },
+  "limits": {
+    "timeout_ms": 2000,
+    "max_findings": 1
+  }
+}

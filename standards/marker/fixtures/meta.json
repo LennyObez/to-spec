@@ -1,0 +1,20 @@
+{
+  "$comment": "What the canary expects from each fixture. Naming the findings, not just the verdict, is what makes the canary able to tell 'this check still works' from 'this check now fails for a different reason'.",
+  "bad": {
+    "status": "fail",
+    "findings": [
+      { "path": "MARKER.md", "message": "MARKER.md is missing from the project root" }
+    ]
+  },
+  "good": {
+    "status": "pass",
+    "findings": []
+  },
+  "blank": {
+    "$comment": "Present but without the token: the content branch, which bad and good between them never reach.",
+    "status": "fail",
+    "findings": [
+      { "path": "MARKER.md", "message": "MARKER.md does not carry MARKER on a line of its own" }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$comment": "Every string a person reads. The harness prefixes displayed lines with the event name, so each of these has to read naturally after 'Stop says:' and never open by restating the situation. A key nothing references is removed rather than kept for later: an unused message is a message nobody has read in context.",
+
+  "canary.broken": "The protections on this project are not answering on this computer. I can keep going without them, but say \"repair the protections\" and I will sort it out.",
+
+  "gate.blocked.one": "I am carrying on: {count} thing is left before I can hand this over.",
+  "gate.blocked.other": "I am carrying on: {count} things are left before I can hand this over.",
+  "gate.stuck": "The same things are still outstanding after three attempts, so I am stopping rather than going round again. The list is in {path}.",
+  "gate.spent": "I have asked three times already, so I am letting this go rather than pressing. What is left is in {path}.",
+  "gate.needs_you.one": "One thing needs you rather than me: {first}.",
+  "gate.needs_you.other": "{count} things need you rather than me, starting with {first}.",
+  "gate.not_looked.one": "This turn is clean, though one thing could not be checked here; it is listed in {path}.",
+  "gate.not_looked.other": "This turn is clean, though {count} things could not be checked here; they are listed in {path}.",
+
+  "ledger.cannot_note": "I could not write down that this turn is changing the project, so nothing would check the result afterwards. I have left the file alone.",
+
+  "secrets.withheld_write": "I stopped a password from being written in plain text where it would be published. I am putting it in a private file instead.",
+  "secrets.withheld_read": "I did not open that file: it holds private keys, and anything I read from it ends up in this conversation.",
+  "secrets.cannot_check": "I could not check whether that file holds anything private, so I left it alone.",
+
+  "snapshot.failed": "I could not take a safety copy first, so I am not running that command. Nothing has been changed.",
+  "snapshot.no_repository": "There is no version history here yet, so I have nothing to fall back on if that command goes wrong. Let me set one up first.",
+  "snapshot.no_ignore_rules": "This project has no ignore rules yet, so a safety copy would sweep up every generated file. Let me add them first, then run that command.",
+
+  "status.title_default": "This project",
+  "status.all_clear": "Nothing is outstanding that I can act on.",
+  "status.can_do": "What I can still do",
+  "status.need_you": "What I need from you",
+  "status.not_checked": "Not checked here",
+  "status.nothing_skipped": "Nothing was skipped in this pass.",
+  "status.full_report": "The full report from the last pass is at `{path}`."
+}

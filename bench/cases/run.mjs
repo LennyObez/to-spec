@@ -49,10 +49,20 @@ function markedProject () {
   return dir
 }
 
-function session (dir, prompt, { allowedTools = 'Write,Read,Edit', maxTurns = 12 } = {}) {
+// These cases measure whether the harness loads the plugin and its hooks fire -- not the model's
+// judgement. So the model is the cheapest one that follows a one-line instruction, the effort is
+// low, and the turn budget is small: every case needs a write, a refusal and a fix at most. The
+// model is overridable so a maintainer can raise it deliberately, never by accident, and the
+// defaults keep a run that touches a real account small.
+const BENCH_MODEL = process.env.TO_SPEC_BENCH_MODEL || 'claude-haiku-4-5'
+const BENCH_EFFORT = process.env.TO_SPEC_BENCH_EFFORT || 'low'
+
+function session (dir, prompt, { allowedTools = 'Write,Read,Edit', maxTurns = 4 } = {}) {
   const run = spawnSync('claude', [
     '-p', prompt,
     '--plugin-dir', PLUGIN_ROOT,
+    '--model', BENCH_MODEL,
+    '--effort', BENCH_EFFORT,
     '--output-format', 'stream-json',
     '--verbose',
     '--include-hook-events',
@@ -62,7 +72,7 @@ function session (dir, prompt, { allowedTools = 'Write,Read,Edit', maxTurns = 12
     cwd: dir,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: 300000,
+    timeout: 120000,
     // A truncated transcript is not a smaller measurement; it is a different one that looks
     // like the right one.
     maxBuffer: 256 * 1024 * 1024,

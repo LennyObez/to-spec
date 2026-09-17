@@ -68,45 +68,6 @@ function composeStandards (pluginRoot, project, loaded) {
   return { standards: composed, problems }
 }
 
-// Deny rules for the secret-bearing files this repository actually ignores. Precise rather than
-// coarse: only a file git ignores is denied, so a tracked template of the same name is untouched,
-// and the guard's own name test decides what counts as secret-bearing. Empty when there is no
-// git, no ignored file, or none that is secret-bearing.
-function secretDenyRules (projectDir, git) {
-  const listing = git(['ls-files', '--others', '--ignored', '--exclude-standard'], {})
-  if (listing.status !== 0) return []
-  const rules = []
-  for (const file of String(listing.stdout || '').split('\n').filter(Boolean)) {
-    if (secrets.candidatePaths(file).length === 0) continue
-    for (const tool of ['Read', 'Grep', 'Write', 'Edit']) rules.push(`${tool}(${file})`)
-  }
-  return rules.sort()
-}
-
-// Merge deny rules into the project's settings without overwriting anything: the union of what is
-// there and what is passed. Returns whether it changed, so an unchanged start writes nothing.
-function mergeDenyRules (projectDir, rules) {
-  const fs = require('fs')
-  const dir = path.join(projectDir, '.claude')
-  const file = path.join(dir, 'settings.json')
-  let settings = {}
-  try {
-    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) settings = parsed
-  } catch (_) { /* absent or unreadable: start from an empty object rather than fail */ }
-
-  if (!settings.permissions || typeof settings.permissions !== 'object') settings.permissions = {}
-  const existing = Array.isArray(settings.permissions.deny) ? settings.permissions.deny : []
-  if (rules.every((rule) => existing.includes(rule))) return false
-
-  settings.permissions.deny = [...new Set([...existing, ...rules])].sort()
-  fs.mkdirSync(dir, { recursive: true })
-  const tmp = `${file}.tmp`
-  fs.writeFileSync(tmp, `${JSON.stringify(settings, null, 2)}\n`)
-  fs.renameSync(tmp, file)
-  return true
-}
-
 // The file a write would leave behind, so a guard sees the result rather than a fragment. A
 // path is returned project-relative with forward slashes, the one spelling the standards match.
 // An edit whose text is not in the file cannot be reconstructed here; null lets the gate catch
@@ -178,15 +139,6 @@ function onSessionStart (payload, env) {
   try {
     summary = statusFile.summarise(require('fs').readFileSync(statusFile.pathIn(projectDir), 'utf8'))
   } catch (_) { /* no status yet: the first armed evaluation will write one */ }
-
-  // A second layer for a session where the hooks cannot run: deny rules for the secret files this
-  // repository ignores, written into the project's settings. It is not this session's protection
-  // -- that is PreToolUse, F9 having shown a rule written mid-session binds unreliably -- so it is
-  // best-effort, and never presented as immediate.
-  try {
-    const rules = secretDenyRules(projectDir, env.gitIn(projectDir))
-    if (rules.length) mergeDenyRules(projectDir, rules)
-  } catch (_) { /* best-effort; the pre-tool guard carries the protection */ }
 
   const facts = [
     `Project type: ${project.archetype && project.archetype.id ? project.archetype.id : 'not yet decided'}.`,

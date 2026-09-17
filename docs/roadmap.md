@@ -95,10 +95,12 @@ Nothing is built until the runtime has answered. A probe that has not run is not
 - [x] Escalation to the person on the fourth refusal of the same file
 - [x] Three transversal standards plus signed commits: no-placeholder-tokens,
       no-analyzer-suppression, root-finite, git-signed-commits
-- [x] Deny rules written into project settings as a second layer, precise rather than coarse
-      (only the secret files git actually ignores), whose effect on the current session is
-      undefined, F9 having observed it both ways, with the pre-tool handler carrying the
-      protection in the session in progress
+- [x] The pre-tool guard is the one protection against a secret reaching a published file. Deny
+      rules in the project's settings were built as a second layer and dropped: a settings deny
+      preempts the guard rather than backing it, and does so on some platforms and not others, so
+      it replaces a precise, well-explained refusal with a generic one at random. The only session
+      it could protect is one where the hooks cannot run, which is the same session that cannot
+      write it. F9's finding, that such a rule's effect is undefined, is what the staging run showed
 - [x] Configuration-change journal
 - [x] Conditional prompt-submit context, carrying the no-regression rule
 - [x] Post-compaction context

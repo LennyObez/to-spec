@@ -138,40 +138,6 @@ test('a copy taken before a destructive command is recorded and recoverable', ()
   }
 })
 
-test('a session writes precise deny rules for the secret files git ignores', () => {
-  const dir = project()
-  try {
-    writeFileSync(join(dir, '.gitignore'), '.to-spec/state.json\n.env\n')
-    writeFileSync(join(dir, '.env'), 'SECRET=x\n')
-    writeFileSync(join(dir, '.env.example'), 'SECRET=\n')
-    invoke('SessionStart', dir, { source: 'startup' })
-    const settings = JSON.parse(readFileSync(join(dir, '.claude', 'settings.json'), 'utf8'))
-    const deny = settings.permissions.deny
-    assert.ok(deny.includes('Read(.env)') && deny.includes('Write(.env)'), 'the ignored .env is denied')
-    assert.ok(!deny.some((rule) => rule.includes('.env.example')),
-      'the tracked template is not ignored, so it is not denied')
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
-
-test('the deny layer is merged, never overwriting what is already there', () => {
-  const dir = project()
-  try {
-    mkdirSync(join(dir, '.claude'), { recursive: true })
-    writeFileSync(join(dir, '.claude', 'settings.json'), JSON.stringify({ permissions: { deny: ['Bash(rm -rf:*)'] }, other: true }))
-    writeFileSync(join(dir, '.gitignore'), '.env\n')
-    writeFileSync(join(dir, '.env'), 'SECRET=x\n')
-    invoke('SessionStart', dir, { source: 'startup' })
-    const settings = JSON.parse(readFileSync(join(dir, '.claude', 'settings.json'), 'utf8'))
-    assert.ok(settings.permissions.deny.includes('Bash(rm -rf:*)'), 'an existing rule survives')
-    assert.ok(settings.permissions.deny.includes('Read(.env)'), 'the new rule is added')
-    assert.equal(settings.other, true, 'unrelated settings are untouched')
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
-
 test('a compaction re-injects the essentials without a fresh start', () => {
   const dir = project()
   try {

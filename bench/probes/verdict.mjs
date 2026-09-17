@@ -20,9 +20,27 @@ export const BENCH_ERROR = 'bench-error'
 // The three that apply to any session, whatever is being measured through it.
 export function unusableSession (s) {
   if (s.endedOnItsOwn === false) {
+    // The tails of both channels are the only account of what the harness was blocked on,
+    // so they travel with the verdict: a hang that prints its cause is one someone can fix.
+    const account = [
+      s.stderrTail ? `stderr said: ${s.stderrTail}` : null,
+      s.danglingStdout ? `stdout left this outside the stream: ${s.danglingStdout}` : null
+    ].filter(Boolean).join(' | ')
+    // A session that hangs on authentication never reached the model, never loaded the
+    // plugin, and so exercised nothing here: that is "could not run", not a broken bench.
+    // The discrimination reads the harness's own words; it is deliberately narrow, because
+    // a plugin defect ends its session on its own and is never one of these.
+    // Only the unambiguous vocabulary of an auth wall diverts a hang. A bare "token" or
+    // "expired" is left out on purpose: they occur in ordinary output, and diverting on them
+    // would absorb a real defect into "could not run" -- the very trade the bench refuses.
+    const authWall = /\b(log ?in|logged in|authenticat|unauthor|oauth|invalid[ _-]?(api[ _-]?key|token|credential))\b/i
+    if (authWall.test(account)) {
+      return { status: UNAVAILABLE, why: `the session could not authenticate, so nothing here ran. ${account}` }
+    }
     return {
       status: BENCH_ERROR,
-      detail: `the session did not end on its own (${s.endedWhy}); this run says nothing about the behaviour`
+      detail: `the session did not end on its own (${s.endedWhy}); this run says nothing about the behaviour` +
+        (account ? `. ${account}` : '')
     }
   }
   if (s.notLoggedIn) return { status: UNAVAILABLE, why: 'session not authenticated' }

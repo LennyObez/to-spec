@@ -62,16 +62,21 @@ jobs:
         env:
           CREDENTIAL: ${{ secrets.HARNESS_CREDENTIAL }}
         run: |
-          # The secret carries whichever credential the person generated. An API key from the
-          # console is `sk-ant-...` and goes to ANTHROPIC_API_KEY; anything else is treated as a
-          # long-lived subscription token from `claude setup-token`. The harness reads one of
-          # these; it never reads a variable named CREDENTIAL.
+          # The secret carries whichever credential the person generated, and the harness reads
+          # one of two variables by the credential's kind -- never a variable named CREDENTIAL.
+          # A subscription token from `claude setup-token` and a console API key share the
+          # sk-ant- prefix and are told apart by the segment that follows: `oat` marks the
+          # OAuth token the subscription reads, while an API key carries `api`. Routing the
+          # whole prefix to the API-key variable sends the subscription token where it is
+          # invalid, and the session then falls back to a login no pipe can answer. A value on
+          # no known prefix is treated as a subscription token, the form that flow returns.
           if [ -z "$CREDENTIAL" ]; then
             echo "this job runs only with a credential, and none reached it"
             exit 1
           fi
           case "$CREDENTIAL" in
-            sk-ant-*) export ANTHROPIC_API_KEY="$CREDENTIAL" ;;
-            *)        export CLAUDE_CODE_OAUTH_TOKEN="$CREDENTIAL" ;;
+            sk-ant-oat*) export CLAUDE_CODE_OAUTH_TOKEN="$CREDENTIAL" ;;
+            sk-ant-*)    export ANTHROPIC_API_KEY="$CREDENTIAL" ;;
+            *)           export CLAUDE_CODE_OAUTH_TOKEN="$CREDENTIAL" ;;
           esac
           node bench/cases/run.mjs
